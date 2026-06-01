@@ -641,11 +641,10 @@ function hideLoading() {
 }
 
 // ==================== GitHub API 核心层 ====================
-// 使用免费公共 CORS 代理访问 GitHub API（解决跨域和国内网络问题）
-const GH_API = 'https://corsproxy.io/?' + encodeURIComponent('https://api.github.com')
+// 使用 Pages Functions 代理（Cloudflare服务器在国外，能直接访问GitHub）
+const GH_API = '/api'
 
 async function ghFetch(path, options = {}) {
-  // corsproxy格式: https://corsproxy.io/?<encoded_url>
   const url = `${GH_API}${path}`
   const headers = {
     'Accept': 'application/vnd.github.v3+json',
