@@ -525,11 +525,11 @@ a{text-decoration:none;color:inherit}
     <!-- Token登录 -->
     <div id="loginTokenPanel" style="display:none">
       <div style="font-size:12px;color:var(--text-sub);margin-bottom:10px;line-height:1.6;background:var(--bg);padding:10px 12px;border-radius:8px">
-        <b>管理员专用：</b>首次使用需 Gitee Token 初始化系统。<br>
-        <b>第1步：</b><a href="https://github.com/settings/tokens/new?scopes=repo&description=产品明细" target="_blank" style="color:var(--primary)">创建Token</a>（勾选repo权限）<br>
+        <b>管理员专用：</b>首次使用需管理员Token连接云端系统。<br>
+        <b>第1步：</b>管理员在系统中生成Token<br>
         <b>第2步：</b>复制Token粘贴到下方
       </div>
-      <input class="login-input login-input-token" type="password" id="tokenInput" placeholder="Gitee 个人令牌" maxlength="250" style="font-size:13px;font-family:'Courier New',monospace">
+      <input class="login-input login-input-token" type="password" id="tokenInput" placeholder="管理员 Token" maxlength="250" style="font-size:13px;font-family:'Courier New',monospace">
       <button class="login-btn" onclick="doTokenLogin()" id="tokenLoginBtn">连接云端（管理员）</button>
       <div class="login-err" id="tokenLoginErr"></div>
     </div>
@@ -761,7 +761,7 @@ const CONFIG = {
 const state = {
   currentPage: 'login',
   pageStack: [],
-  token: '',              // Gitee Token (管理员云端模式)
+  token: '',              // 管理员Token (云端模式)
   products: [],
   config: {},
   users: [],             // 所有用户列表
@@ -1224,7 +1224,7 @@ async function doTokenLogin() {
     
     if (!data || data.products === undefined) {
       hideLoading()
-      if (confirm('检测到这是首次使用。\n\n请先在 Gitee 创建私有仓库 product-data\n并在其中创建 data.json 文件。\n\n点击「确定」将自动初始化数据。')) {
+      if (confirm('检测到这是首次使用。\n\n点击「确定」将自动初始化云端数据。')) {
         showLoading('初始化系统中…')
         const initData = initAdminData(getDefaultData(), apiUser.login)
         try {
@@ -1234,7 +1234,7 @@ async function doTokenLogin() {
           showToast('✅ 系统初始化成功！')
         } catch(initErr) {
           hideLoading()
-          alert('初始化失败：' + initErr.message + '\n\n请确认已在Gitee创建私有仓库product-data并配置好环境变量。')
+          alert('初始化失败：' + initErr.message + '\n\n请确认云端服务已正常运行。')
           btn.disabled = false
           btn.textContent = '连接云端'
           return
@@ -1330,7 +1330,7 @@ async function doTokenLogin() {
     errEl.textContent = err.message || '连接失败'
     errEl.style.display = 'block'
     btn.disabled = false
-    btn.textContent = '连接 GitHub'
+    btn.textContent = '连接云端'
   }
 }
 
