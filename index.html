@@ -917,6 +917,8 @@ async function doLogin() {
     }
 
     state.cloudSync = true
+    btn.disabled = false
+    btn.textContent = '连接 GitHub'
     goPage('index', false)
     showSyncStatus(`✅ 已连接 @${user.login}`)
 
