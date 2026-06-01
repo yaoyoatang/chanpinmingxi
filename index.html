@@ -879,7 +879,7 @@ async function apiFetch(path, options = {}) {
   }
   // 8秒超时，避免网络不通时卡死
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 8000)
+  const timer = setTimeout(() => controller.abort(), 20000)
   try {
     const res = await fetch(url, { ...options, headers, signal: controller.signal })
     clearTimeout(timer)
