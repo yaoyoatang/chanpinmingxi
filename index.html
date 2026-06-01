@@ -75,7 +75,7 @@ a{text-decoration:none;color:inherit}
 .tab-item.active{color:var(--primary)}
 .tab-icon{font-size:22px;line-height:1}
 
-/* ===== 登录页（GitHub Token） ===== */
+/* ===== 登录/注册页 ===== */
 #page-login{
   background:linear-gradient(145deg,#185FA5 0%,#0e3d7a 100%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -83,33 +83,56 @@ a{text-decoration:none;color:inherit}
 }
 .login-logo{font-size:64px;margin-bottom:12px;text-align:center}
 .login-title{color:#fff;font-size:24px;font-weight:700;margin-bottom:6px;text-align:center}
-.login-sub{color:rgba(255,255,255,.6);font-size:14px;margin-bottom:36px;text-align:center}
+.login-sub{color:rgba(255,255,255,.6);font-size:14px;margin-bottom:28px;text-align:center}
 .login-card{
-  background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:380px;
+  background:#fff;border-radius:20px;padding:24px 22px;width:100%;max-width:400px;
   box-shadow:0 8px 32px rgba(0,0,0,.2);
 }
-.login-card-title{font-size:16px;font-weight:600;color:var(--text-main);margin-bottom:18px;text-align:center}
-.login-card-title-small{font-size:13px;color:var(--text-sub);margin-bottom:16px;text-align:center;line-height:1.5}
+.login-tabs{
+  display:flex;margin-bottom:18px;background:var(--bg);border-radius:10px;padding:3px;
+}
+.login-tab{
+  flex:1;padding:9px 0;text-align:center;font-size:14px;font-weight:500;
+  color:var(--text-sub);border-radius:8px;cursor:pointer;transition:all .2s;
+}
+.login-tab.active{background:#fff;color:var(--primary);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .login-input{
   width:100%;padding:13px 16px;border:2px solid var(--border);border-radius:12px;
-  font-size:15px;margin-bottom:14px;transition:border-color .2s;
+  font-size:15px;margin-bottom:12px;transition:border-color .2s;
 }
 .login-input:focus{border-color:var(--primary)}
-.login-input-token{font-size:13px;font-family:'Courier New',monospace;letter-spacing:.5px}
 .login-btn{
   width:100%;padding:14px;background:linear-gradient(135deg,#185FA5,#0e3d7a);
   color:#fff;border-radius:12px;font-size:16px;font-weight:600;
   box-shadow:0 4px 16px rgba(24,95,165,.4);transition:transform .15s,box-shadow .15s;
 }
 .login-btn:active{transform:scale(.97)}
-.login-hint{color:var(--text-sub);font-size:12px;text-align:center;margin-top:14px;line-height:1.6}
-.login-hint a{color:var(--primary)}
+.login-btn-green{background:linear-gradient(135deg,#07c160,#059948);box-shadow:0 4px 16px rgba(7,193,96,.4)}
+.login-btn-orange{background:linear-gradient(135deg,#ff8800,#e67500);box-shadow:0 4px 16px rgba(255,136,0,.4)}
 .login-err{color:var(--danger);font-size:13px;text-align:center;margin-top:10px;display:none}
-.login-steps{text-align:left;font-size:12px;color:var(--text-sub);background:var(--bg);padding:12px 14px;border-radius:10px;margin-bottom:16px;line-height:1.8}
-.login-steps b{color:var(--text-main)}
+.login-link{color:var(--primary);font-size:13px;text-align:center;margin-top:14px;cursor:pointer}
+.login-link:hover{text-decoration:underline}
+.login-divider{text-align:center;color:var(--text-sub);font-size:12px;margin:14px 0;position:relative}
+.login-divider::before{content:'';position:absolute;left:0;top:50%;width:40%;height:1px;background:var(--border)}
+.login-divider::after{content:'';position:absolute;right:0;top:50%;width:40%;height:1px;background:var(--border)}
+.login-hint{color:var(--text-sub);font-size:12px;text-align:center;margin-top:10px;line-height:1.6}
+.login-hint a{color:var(--primary)}
+
+/* ===== 注册页 ===== */
+#page-register{
+  background:linear-gradient(145deg,#07c160 0%,#059948 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:32px 24px;
+}
+.register-card{
+  background:#fff;border-radius:20px;padding:24px 22px;width:100%;max-width:400px;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+}
+.register-title{font-size:20px;font-weight:700;color:var(--text-main);margin-bottom:16px;text-align:center}
+.register-sub{font-size:13px;color:var(--text-sub);text-align:center;margin-bottom:16px}
 
 /* ===== 产品列表页 ===== */
-#page-index{padding-bottom:70px}
+#index-page{padding-bottom:70px}
 .search-bar-wrap{padding:12px 16px;background:#fff;border-bottom:1px solid var(--border)}
 .search-bar{
   display:flex;align-items:center;gap:8px;
@@ -170,7 +193,7 @@ a{text-decoration:none;color:inherit}
 .empty-text{font-size:15px}
 
 /* ===== 产品详情页 ===== */
-#page-detail{padding-bottom:80px}
+#detail-page{padding-bottom:80px}
 .detail-header{background:#fff;padding:20px 16px 16px;border-bottom:1px solid var(--border)}
 .detail-model{font-size:22px;font-weight:700;color:var(--text-main);margin-bottom:6px}
 .detail-brand-tag{display:inline-block;font-size:13px;padding:3px 12px;background:var(--primary-light);color:var(--primary);border-radius:20px}
@@ -217,7 +240,7 @@ a{text-decoration:none;color:inherit}
 .btn-ghost{background:#f5f6fa;color:var(--text-main);border:1.5px solid var(--border)}
 
 /* ===== 添加/编辑产品页 ===== */
-#page-add{padding-bottom:80px}
+#add-page{padding-bottom:80px}
 .form-wrap{padding:16px}
 .form-section{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
 .form-section-title{font-size:13px;font-weight:600;color:var(--primary);margin-bottom:14px;letter-spacing:.5px}
@@ -277,8 +300,9 @@ a{text-decoration:none;color:inherit}
 .btn-submit:disabled{opacity:.6}
 
 /* ===== 管理页 ===== */
-#page-manage{padding-bottom:80px}
+#manage-page{padding-bottom:80px}
 .manage-section{background:#fff;border-radius:16px;padding:16px;margin:12px 16px;box-shadow:var(--shadow)}
+.manage-section-title{font-size:15px;font-weight:600;color:var(--text-main);margin-bottom:14px;display:flex;align-items:center;gap:6px}
 .manage-row{
   display:flex;align-items:center;justify-content:space-between;
   padding:12px 0;border-bottom:1px solid var(--bg);
@@ -298,7 +322,48 @@ a{text-decoration:none;color:inherit}
 .toggle input:checked + .toggle-slider{background:var(--primary)}
 .toggle input:checked + .toggle-slider::before{transform:translateX(20px)}
 
-.code-display{font-size:22px;font-weight:700;color:var(--primary);letter-spacing:4px;padding:8px 0}
+/* ===== 用户管理页 ===== */
+#users-page{padding-bottom:80px}
+.user-card{
+  background:#fff;border-radius:14px;padding:14px 16px;margin:10px 16px;
+  box-shadow:var(--shadow);border:1px solid var(--border);
+}
+.user-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.user-name{font-size:15px;font-weight:600;color:var(--text-main)}
+.user-role-badge{font-size:11px;padding:2px 10px;border-radius:20px}
+.role-admin{background:#FFF3E0;color:#E65100;border:1px solid #FFCC80}
+.role-member{background:#E8F0FB;color:#185FA5;border:1px solid #B5D4F4}
+.user-info{font-size:12px;color:var(--text-sub);line-height:1.7}
+.user-actions{display:flex;gap:8px;margin-top:10px}
+.user-actions .btn{padding:7px 14px;font-size:12px;flex:none}
+
+.invite-box{
+  background:linear-gradient(135deg,#E8F5E9,#F0faf0);border-radius:14px;padding:16px;margin:12px 16px;
+  border:1px solid #C8E6C9;
+}
+.invite-code-display{font-size:28px;font-weight:700;color:#2E7D32;letter-spacing:6px;text-align:center;margin:10px 0;font-family:'Courier New',monospace}
+.invite-hint{font-size:12px;color:#558B2F;text-align:center;line-height:1.6}
+
+/* ===== 权限编辑弹窗 ===== */
+.perm-modal-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.perm-modal-mask.show{opacity:1;pointer-events:all}
+.perm-modal{
+  background:#fff;border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:480px;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+.perm-modal-mask.show .perm-modal{transform:translateY(0)}
+.perm-modal-title{font-size:18px;font-weight:700;margin-bottom:16px;color:var(--text-main)}
+.perm-group{margin-bottom:14px}
+.perm-group-label{font-size:13px;color:var(--text-sub);margin-bottom:8px;font-weight:500}
+.perm-brand-chips{display:flex;flex-wrap:wrap;gap:6px}
+.perm-brand-chip{
+  padding:4px 12px;border-radius:20px;font-size:12px;
+  background:var(--bg);color:var(--text-sub);border:1.5px solid var(--border);cursor:pointer;transition:all .15s;
+}
+.perm-brand-chip.selected{background:var(--primary);color:#fff;border-color:var(--primary)}
 
 /* ===== 弹窗 ===== */
 .modal-mask{
@@ -368,6 +433,8 @@ a{text-decoration:none;color:inherit}
   .modal-mask{align-items:center}
   .modal-box{border-radius:20px;margin:0 16px;max-width:358px}
   .sync-status{left:calc(50% + 195px);transform:translateX(-100%);top:70px}
+  .perm-modal-mask{align-items:center}
+  .perm-modal{border-radius:20px;margin:0 16px;max-width:358px}
 }
 </style>
 </head>
@@ -402,7 +469,7 @@ a{text-decoration:none;color:inherit}
       <span class="modal-stock-unit">件</span>
     </div>
     <input class="modal-input" type="number" id="soldQtyInput" placeholder="卖出数量" min="1">
-    <input class="modal-input" type="digit" id="soldPriceInput" placeholder="卖价（选填，卖出时填写）">
+    <input class="modal-input" type="digit" id="soldPriceInput" placeholder="卖价（选填）">
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeSoldModal()">取消</button>
       <button class="btn btn-success" onclick="confirmSold()">确定卖出</button>
@@ -410,36 +477,77 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<!-- ===== 登录页（GitHub Token） ===== -->
-<div id="page-login" class="page active">
-  <div style="font-size:64px;margin-bottom:12px;text-align:center">🛍️</div>
-  <div class="login-title" style="text-align:center;color:#fff">产品明细</div>
-  <div class="login-sub" style="text-align:center;color:rgba(255,255,255,.6)">数据通过云端同步 · 多设备安全访问</div>
-  <div class="login-card">
-    <div class="login-card-title">选择使用方式</div>
-    <button class="login-btn" onclick="useLocalMode()" id="localBtn" style="background:#07c160;margin-bottom:12px">📱 本地使用（推荐）</button>
-    <div style="text-align:center;color:#888;font-size:12px;margin-bottom:14px">数据存于本设备 · 无需注册 · 即点即用</div>
-
-    <div style="border-top:1px solid var(--border);padding-top:12px">
-      <div class="login-card-title" style="font-size:13px">☁️ 云端同步（可选）</div>
-      <div class="login-steps" id="loginSteps">
-        <b>第1步：</b>打开 <a href="https://github.com/settings/tokens/new?scopes=repo&description=产品明细" target="_blank">GitHub Token 创建页面</a><br>
-        <b>第2步：</b>填写描述「产品明细」，勾选 <b>repo</b> 权限<br>
-        <b>第3步：</b>点生成令牌(Genrate token)，复制下面的字符串<br>
-        <b>第4步：</b>粘贴到下方输入框即可
-      </div>
-      <input class="login-input login-input-token" type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" maxlength="250">
-      <button class="login-btn" onclick="doLogin()" id="loginBtn">连接 GitHub</button>
-      <div class="login-err" id="loginErr"></div>
+<!-- 权限编辑弹窗 -->
+<div class="perm-modal-mask" id="permModal">
+  <div class="perm-modal">
+    <div class="perm-modal-title" id="permModalTitle">编辑权限</div>
+    <div id="permModalBody"></div>
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn btn-ghost" onclick="closePermModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveUserPerm()">保存</button>
     </div>
   </div>
 </div>
 
-<!-- ===== 产品列表页 ===== -->
-<div id="page-index" class="page">
+<!-- ==================== 登录页 ==================== -->
+<div id="login-page" class="page active">
+  <div style="font-size:64px;margin-bottom:12px;text-align:center">🛍️</div>
+  <div class="login-title" style="text-align:center;color:#fff">产品明细</div>
+  <div class="login-sub" style="text-align:center;color:rgba(255,255,255,.6)">多用户协作 · 云端同步 · 权限管理</div>
+  <div class="login-card">
+    <!-- Tab切换 -->
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="switchLoginTab('account')" id="tabAccount">账号登录</div>
+      <div class="login-tab" onclick="switchLoginTab('token')" id="tabToken">Token登录</div>
+    </div>
+
+    <!-- 账号登录 -->
+    <div id="loginAccountPanel">
+      <input class="login-input" id="loginUsername" placeholder="用户名" autocomplete="username">
+      <input class="login-input" id="loginPassword" type="password" placeholder="密码" autocomplete="current-password">
+      <button class="login-btn" onclick="doAccountLogin()" id="acctLoginBtn">登 录</button>
+      <div class="login-err" id="loginErr"></div>
+      <div class="login-link" onclick="goPage('register')">没有账号？通过邀请码注册 →</div>
+    </div>
+
+    <!-- Token登录 -->
+    <div id="loginTokenPanel" style="display:none">
+      <div style="font-size:12px;color:var(--text-sub);margin-bottom:10px;line-height:1.6;background:var(--bg);padding:10px 12px;border-radius:8px">
+        <b>管理员专用：</b>首次使用需GitHub Token初始化系统。<br>
+        <b>第1步：</b><a href="https://github.com/settings/tokens/new?scopes=repo&description=产品明细" target="_blank" style="color:var(--primary)">创建Token</a>（勾选repo权限）<br>
+        <b>第2步：</b>复制Token粘贴到下方
+      </div>
+      <input class="login-input login-input-token" type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxx" maxlength="250" style="font-size:13px;font-family:'Courier New',monospace">
+      <button class="login-btn" onclick="doTokenLogin()" id="tokenLoginBtn">连接 GitHub</button>
+      <div class="login-err" id="tokenLoginErr"></div>
+    </div>
+
+    <div class="login-divider">或</div>
+    <button class="login-btn login-btn-green" onclick="useLocalMode()" style="margin-bottom:8px">📱 本地使用（离线模式）</button>
+  </div>
+</div>
+
+<!-- ==================== 注册页 ==================== -->
+<div id="register-page" class="page">
+  <div style="font-size:64px;margin-bottom:12px;text-align:center">📝</div>
+  <div class="register-card">
+    <div class="register-title">创建账号</div>
+    <div class="register-sub">请输入管理员分享的邀请码完成注册</div>
+    <input class="login-input" id="regInviteCode" placeholder="邀请码（6位字母数字）" style="letter-spacing:3px;text-transform:uppercase;font-weight:600">
+    <input class="login-input" id="regUsername" placeholder="设置用户名（英文/数字）">
+    <input class="login-input" id="regPassword" type="password" placeholder="设置密码">
+    <input class="login-input" id="regName" placeholder="你的名字（如：张三）">
+    <button class="login-btn login-btn-green" onclick="doRegister()" id="regBtn">注 册</button>
+    <div class="login-err" id="regErr"></div>
+    <div class="login-link" onclick="goPage('login')">← 返回登录</div>
+  </div>
+</div>
+
+<!-- ==================== 产品列表页 ==================== -->
+<div id="index-page" class="page">
   <nav class="navbar">
     <span class="navbar-title">产品明细</span>
-    <span class="navbar-action" onclick="goPage('manage')">⚙️ 管理</span>
+    <span class="navbar-action" id="manageEntry" onclick="goPage('manage')" style="display:none">⚙️ 管理</span>
   </nav>
   <div class="search-bar-wrap">
     <div class="search-bar">
@@ -450,22 +558,22 @@ a{text-decoration:none;color:inherit}
   </div>
   <div class="brand-tabs" id="brandTabs"></div>
   <div class="product-list" id="productList"></div>
-  <div class="fab-btn" onclick="goPage('add')" title="添加产品">＋</div>
+  <div class="fab-btn" id="fabAdd" onclick="goPage('add')" title="添加产品" style="display:none">＋</div>
 </div>
 
-<!-- ===== 产品详情页 ===== -->
-<div id="page-detail" class="page">
+<!-- ==================== 产品详情页 ==================== -->
+<div id="detail-page" class="page">
   <nav class="navbar">
     <span class="navbar-back" onclick="goBack()">‹</span>
     <span class="navbar-title">产品详情</span>
-    <span class="navbar-action" id="detailEditBtn" onclick="goEditProduct()">编辑</span>
+    <span class="navbar-action" id="detailEditBtn" onclick="goEditProduct()" style="display:none">编辑</span>
   </nav>
   <div id="detailContent"></div>
   <div class="detail-actions" id="detailActions"></div>
 </div>
 
-<!-- ===== 添加/编辑产品页 ===== -->
-<div id="page-add" class="page">
+<!-- ==================== 添加/编辑产品页 ==================== -->
+<div id="add-page" class="page">
   <nav class="navbar">
     <span class="navbar-back" onclick="goBack()">‹</span>
     <span class="navbar-title" id="addPageTitle">添加产品</span>
@@ -478,7 +586,7 @@ a{text-decoration:none;color:inherit}
         <input class="form-input" id="fieldBrand" placeholder="品牌名称（可选）">
         <div class="history-brands" id="historyBrandsWrap">
           <span class="history-title">历史品牌：</span>
-          <div class="history-tags" id="historyBrandTags"></div>
+          <div class="history-brand-tags" id="historyBrandTags"></div>
         </div>
       </div>
       <div class="form-row">
@@ -525,28 +633,43 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<!-- ===== 管理页 ===== -->
-<div id="page-manage" class="page">
+<!-- ==================== 管理页 ==================== -->
+<div id="manage-page" class="page">
   <nav class="navbar">
     <span class="navbar-back" onclick="goBack()">‹</span>
     <span class="navbar-title">管理中心</span>
   </nav>
+
+  <!-- 系统设置 -->
   <div class="manage-section" style="margin-top:16px">
-    <div style="font-size:14px;font-weight:600;color:var(--text-sub);margin-bottom:12px">访问密码</div>
-    <div class="form-row">
-      <div class="form-label">访问密码（可选，不填则无密码保护）</div>
-      <input class="form-input" id="mgUserCode" placeholder="留空表示不需要密码">
-    </div>
-  </div>
-  <div class="manage-section">
-    <div style="font-size:14px;font-weight:600;color:var(--text-sub);margin-bottom:12px">显示设置</div>
+    <div class="manage-section-title">🔐 系统设置</div>
     <div class="manage-row">
-      <div><div class="manage-row-label">隐藏价格和利润</div><div class="manage-row-sub">开启后列表只显示基本信息</div></div>
-      <label class="toggle"><input type="checkbox" id="permHidePrice"><span class="toggle-slider"></span></label>
+      <div><div class="manage-row-label">访问密码</div><div class="manage-row-sub">全局密码保护（可选）</div></div>
+      <label class="toggle"><input type="checkbox" id="mgAccessPwdToggle" onchange="toggleMgField('mgAccessPwd')"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="form-row" id="mgAccessPwdWrap" style="display:none;margin-top:10px">
+      <input class="form-input" id="mgAccessPwd" placeholder="设置全局访问密码">
+    </div>
+    <div class="manage-row">
+      <div><div class="manage-row-label">默认隐藏价格</div><div class="manage-row-sub">新用户默认看不到进价/利润</div></div>
+      <label class="toggle"><input type="checkbox" id="mgHidePriceDefault"><span class="toggle-slider"></span></label>
     </div>
   </div>
+
+  <!-- 邀请管理 -->
+  <div class="manage-section" id="inviteSection" style="display:none">
+    <div class="manage-section-title">🎫 邀请管理</div>
+    <div class="invite-box" id="activeInviteBox" style="display:none">
+      <div style="font-size:13px;font-weight:600;color:#2E7D32;margin-bottom:4px">当前有效邀请码</div>
+      <div class="invite-code-display" id="activeInviteCode"></div>
+      <div class="invite-hint">把上面的邀请码发给要注册的人<br>或者直接发送链接：<br><span id="inviteLinkDisplay" style="word-break:break-all;font-size:12px;color:#185FA5"></span></div>
+    </div>
+    <button class="btn btn-success" style="width:100%" onclick="generateInviteCode()">生成新的邀请码</button>
+  </div>
+
+  <!-- 数据管理 -->
   <div class="manage-section">
-    <div style="font-size:14px;font-weight:600;color:var(--text-sub);margin-bottom:12px">数据管理</div>
+    <div class="manage-section-title">💾 数据管理</div>
     <div class="manage-row">
       <div><div class="manage-row-label">导出全部数据</div></div>
       <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="exportData()">下载JSON</button>
@@ -557,10 +680,34 @@ a{text-decoration:none;color:inherit}
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
     </div>
   </div>
+
+  <!-- 账号安全 -->
+  <div class="manage-section">
+    <div class="manage-section-title">👤 账号</div>
+    <div class="manage-row">
+      <div><div class="manage-row-label">修改密码</div></div>
+      <button class="btn btn-ghost" style="padding:8px 16px;font-size:13px" onclick="showChangePwdUI()">修改</button>
+    </div>
+    <div id="changePwdArea" style="display:none;padding:10px 0">
+      <input class="form-input" id="newPwdInput" type="password" placeholder="新密码" style="margin-bottom:8px">
+      <button class="btn btn-primary" style="width:100%;padding:10px" onclick="changeMyPassword()">确认修改</button>
+    </div>
+  </div>
+
   <div style="padding:0 16px">
     <button class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="saveManageConfig()">保存设置</button>
     <button class="btn btn-danger" style="width:100%" onclick="doLogout()">退出登录</button>
   </div>
+</div>
+
+<!-- ==================== 用户管理页 ==================== -->
+<div id="users-page" class="page">
+  <nav class="navbar">
+    <span class="navbar-back" onclick="goBack()">‹</span>
+    <span class="navbar-title">用户管理</span>
+    <span class="navbar-action" onclick="goPage('manage')">设置</span>
+  </nav>
+  <div id="userListArea"></div>
 </div>
 
 <!-- 底部标签栏 -->
@@ -569,7 +716,7 @@ a{text-decoration:none;color:inherit}
     <span class="tab-icon">📋</span>
     <span>产品列表</span>
   </div>
-  <div class="tab-item" id="tab-add" onclick="goPage('add')">
+  <div class="tab-item" id="tab-add" onclick="goPage('add')" id="tabAddItem">
     <span class="tab-icon">➕</span>
     <span>添加产品</span>
   </div>
@@ -580,11 +727,8 @@ a{text-decoration:none;color:inherit}
 <script>
 // ==================== 配置 ====================
 const CONFIG = {
-  // GitHub 用户名（替换成你的）
   owner: 'yaoyoatang',
-  // 存放数据的私有仓库名（首次自动创建）
   repo: 'product-data',
-  // 数据文件路径
   dataPath: 'data.json',
 }
 
@@ -592,17 +736,21 @@ const CONFIG = {
 const state = {
   currentPage: 'login',
   pageStack: [],
-  token: '',          // GitHub PAT
+  token: '',              // GitHub PAT (管理员云端模式)
   products: [],
-  brands: [],
   config: {},
+  users: [],             // 所有用户列表
+  invites: [],           // 邀请码列表
+  currentUser: null,     // 当前登录的用户对象
   currentFilter: '全部',
   searchKeyword: '',
   currentProduct: null,
   editProductId: null,
   uploadImages: [],
   soldProductId: null,
-  dataSha: '',        // GitHub 文件的 SHA（更新时需要）
+  dataSha: '',
+  cloudSync: false,      // 是否开启云端同步
+  editingUserId: null,   // 正在编辑权限的用户ID
 }
 
 // ==================== 工具函数 ====================
@@ -631,6 +779,13 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 6)
 }
 
+function generateInviteCodeStr() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  // 去掉容易混淆的字符
+  let code = ''
+  for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length))
+  return code
+}
+
 function showLoading(text = '加载中…') {
   document.getElementById('loadingText').textContent = text
   document.getElementById('loadingOverlay').classList.remove('hidden')
@@ -640,8 +795,37 @@ function hideLoading() {
   document.getElementById('loadingOverlay').classList.add('hidden')
 }
 
+function escHtml(s) {
+  if (!s) return ''
+  const div = document.createElement('div')
+  div.textContent = s
+  return div.innerHTML
+}
+
+// 简单密码哈希（非加密用途，仅防止明文存储）
+function simpleHash(str) {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash |= 0
+  }
+  return 'h_' + Math.abs(hash).toString(36)
+}
+
+function isCurrentUserAdmin() {
+  return state.currentUser && state.currentUser.role === 'admin'
+}
+
+function hasPermission(perm) {
+  if (!state.currentUser) return false
+  if (isCurrentUserAdmin()) return true
+  const p = state.currentUser.permissions || {}
+  if (perm === 'canViewAll') return !(p.brands && p.brands.length > 0)
+  return !!p[perm]
+}
+
 // ==================== GitHub API 核心层 ====================
-// 使用 Pages Functions 代理（Cloudflare服务器在国外，能直接访问GitHub）
 const GH_API = '/api'
 
 async function ghFetch(path, options = {}) {
@@ -651,51 +835,30 @@ async function ghFetch(path, options = {}) {
     'Authorization': `Bearer ${state.token}`,
     ...options.headers,
   }
-  console.log('[ghFetch] 请求:', url)
   const res = await fetch(url, { ...options, headers })
-
   if (res.status === 401) throw new Error('Token无效或已过期')
-  if (res.status === 403) {
-    const json = await res.json().catch(() => ({}))
-    if (json.message && json.message.includes('API rate limit')) {
-      throw new Error('请求太频繁，请稍后再试')
-    }
-    throw new Error('权限不足，请确认Token有repo权限')
-  }
+  if (res.status === 403) throw new Error('权限不足')
   if (res.status === 404) return null
-
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(json.message || `请求失败 (${res.status})`)
-  }
-
-  // 返回带SHA的信息（用于后续更新）
+  if (!res.ok) throw new Error(`请求失败 (${res.status})`)
   const result = await res.json()
   if (result.sha) state.dataSha = result.sha
   return result
 }
 
-// 从 GitHub 读取数据文件
 async function ghReadData() {
   try {
     const result = await ghFetch(`/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}`)
-    if (!result) return { products: [], config: {} }
-
-    // GitHub API返回的是base64编码内容
+    if (!result) return getDefaultData()
     const decoded = atob(result.content)
     const data = JSON.parse(decoded)
     state.dataSha = result.sha
-    return data
+    return ensureDataSchema(data)
   } catch (err) {
-    if (err.message.includes('Not Found') || err.message === 'null') {
-      // 数据文件不存在，返回空数据
-      return { products: [], config: {} }
-    }
+    if (err.message.includes('Not Found')) return getDefaultData()
     throw err
   }
 }
 
-// 将数据写入 GitHub
 async function ghWriteData(data) {
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))))
   const body = {
@@ -703,7 +866,6 @@ async function ghWriteData(data) {
     content: content,
   }
   if (state.dataSha) body.sha = state.dataSha
-
   const result = await ghFetch(`/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -713,7 +875,6 @@ async function ghWriteData(data) {
   return result
 }
 
-// 创建私有仓库（首次使用时）
 async function ghCreateRepo() {
   await ghFetch('/user/repos', {
     method: 'POST',
@@ -729,12 +890,30 @@ async function ghCreateRepo() {
   })
 }
 
-// ==================== 数据操作层（带本地缓存+防冲突） ====================
-let localCache = null  // 内存中的数据缓存
+// ==================== 数据模型 ====================
+function getDefaultData() {
+  return {
+    products: [],
+    config: { password: '', hidePriceDefault: false },
+    users: [],
+    invites: [],
+  }
+}
+
+function ensureDataSchema(data) {
+  if (!data.users) data.users = []
+  if (!data.invites) data.invites = []
+  if (!data.config) data.config = {}
+  if (data.config.hidePriceDefault === undefined) data.config.hidePriceDefault = false
+  return data
+}
+
+// ==================== 本地缓存 ====================
+let localCache = null
 
 function getLocalData() {
   if (!localCache) {
-    try { localCache = JSON.parse(localStorage.getItem('pm_cache') || '{"products":[],"config":{}}') } catch(e) { localCache = { products:[], config:{} } }
+    try { localCache = JSON.parse(localStorage.getItem('pm_cache') || '{"products":[],"config":[],"users":[],"invites":[]}') } catch(e) { localCache = getDefaultData() }
   }
   return localCache
 }
@@ -744,56 +923,59 @@ function saveLocalCache(data) {
   try { localStorage.setItem('pm_cache', JSON.stringify(data)) } catch(e) {}
 }
 
-// 从云端拉取最新数据
+// ==================== 数据操作层 ====================
 async function pullData(showLoadingFlag = true) {
-  // 本地模式：直接从缓存读取
-  if (!state.token || state.cloudSync === false) {
+  if (!state.cloudSync) {
     const cached = getLocalData()
-    state.products = cached.products || []
-    state.config = cached.config || {}
+    applyData(cached)
     return true
   }
   if (showLoadingFlag) showLoading('正在同步数据…')
   try {
     const data = await ghReadData()
     saveLocalCache(data)
-    state.products = data.products || []
-    state.config = data.config || {}
+    applyData(data)
     if (showLoadingFlag) hideLoading()
     return true
   } catch (err) {
     if (showLoadingFlag) hideLoading()
-    // 网络错误时使用本地缓存
     const cached = getLocalData()
-    state.products = cached.products || []
-    state.config = cached.config || {}
+    applyData(cached)
     showToast('⚠️ 使用离线数据：' + err.message)
     return false
   }
 }
 
-// 推送数据到云端
+function applyData(data) {
+  state.products = data.products || []
+  state.config = data.config || {}
+  state.users = data.users || []
+  state.invites = data.invites || []
+}
+
 async function pushData() {
-  // 本地模式：只保存到浏览器
-  if (!state.token || state.cloudSync === false) {
-    saveLocalCache({ products: state.products, config: state.config })
+  const data = collectData()
+  if (!state.cloudSync) {
+    saveLocalCache(data)
     showSyncStatus('💾 已保存')
     return true
   }
   showSyncStatus('正在保存…')
   try {
-    const data = { products: state.products, config: state.config }
     await ghWriteData(data)
     saveLocalCache(data)
     showSyncStatus('✅ 已同步')
     return true
   } catch (err) {
-    // 保存到本地，稍后重试
-    saveLocalCache({ products: state.products, config: state.config })
+    saveLocalCache(data)
     showSyncStatus('❌ 已保存到本地')
     showToast('网络异常，数据已保存在浏览器本地')
     return false
   }
+}
+
+function collectData() {
+  return { products: state.products, config: state.config, users: state.users, invites: state.invites }
 }
 
 // ==================== 路由 ====================
@@ -802,7 +984,7 @@ function goPage(name, pushStack = true) {
     state.pageStack.push(state.currentPage)
   }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
-  document.getElementById('page-' + name).classList.add('active')
+  document.getElementById(name + '-page').classList.add('active')
   state.currentPage = name
 
   const tabbar = document.getElementById('tabbar')
@@ -815,9 +997,12 @@ function goPage(name, pushStack = true) {
     tabbar.style.display = 'none'
   }
 
+  updateUIForPermissions()
+
   if (name === 'index') renderProductList()
   if (name === 'add') initAddPage()
   if (name === 'manage') loadManageConfig()
+  if (name === 'users') renderUserList()
 }
 
 function goBack() {
@@ -826,38 +1011,145 @@ function goBack() {
   else goPage('index', false)
 }
 
-// ==================== 登录 ====================
-function useLocalMode() {
-  // 直接用本地存储，不需要任何Token
-  state.token = ''
-  state.cloudSync = false  // 标记为本地模式
-  const cached = localStorage.getItem('pm_cache')
-  if (cached) {
-    try {
-      localCache = JSON.parse(cached)
-      state.products = localCache.products || []
-      state.config = localCache.config || {}
-    } catch(e) {
-      state.products = []
-      state.config = {}
-      localCache = { products: [], config: {} }
-    }
-  } else {
-    state.products = []
-    state.config = {}
-    localCache = { products: [], config: {} }
-  }
-  goPage('index', false)
-  showToast('✅ 本地模式已启动')
+// 根据当前用户权限更新界面
+function updateUIForPermissions() {
+  const admin = isCurrentUserAdmin()
+  // 管理入口：只有管理员可见
+  const manageEntry = document.getElementById('manageEntry')
+  if (manageEntry) manageEntry.style.display = admin ? '' : 'none'
+  // 添加按钮
+  const fabAdd = document.getElementById('fabAdd')
+  if (fabAdd) fabAdd.style.display = hasPermission('canAdd') ? '' : 'none'
+  // 详情编辑按钮
+  const detailEditBtn = document.getElementById('detailEditBtn')
+  if (detailEditBtn) detailEditBtn.style.display = hasPermission('canEdit') ? '' : 'none'
 }
 
-async function doLogin() {
+// ==================== 登录Tab切换 ====================
+function switchLoginTab(tab) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'))
+  document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active')
+  document.getElementById('login' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Panel').style.display = ''
+  if (tab === 'account') document.getElementById('loginTokenPanel').style.display = 'none'
+  else document.getElementById('loginAccountPanel').style.display = 'none'
+}
+
+// ==================== 账号登录 ====================
+async function doAccountLogin() {
+  const username = document.getElementById('loginUsername').value.trim()
+  const password = document.getElementById('loginPassword').value.trim()
+  if (!username || !password) { showToast('请输入用户名和密码'); return }
+
+  const btn = document.getElementById('acctLoginBtn')
+  const errEl = document.getElementById('loginErr')
+
+  btn.disabled = true
+  btn.textContent = '登录中…'
+  errEl.style.display = 'none'
+
+  // 先尝试本地模式（从localStorage读取用户数据）
+  showLoading('验证账号…')
+  let success = false
+  let needCloud = false
+
+  // 先检查本地缓存有没有用户
+  const localData = getLocalData()
+  const user = findUser(localData.users, username, password)
+
+  if (user) {
+    success = true
+    // 检查是否有缓存的Token可以做云端同步
+    const cachedToken = localStorage.getItem('pm_token')
+    if (cachedToken && user.role === 'admin') {
+      state.token = cachedToken
+      // 尝试验证Token
+      try {
+        await ghFetch('/user')
+        state.cloudSync = true
+      } catch(e) {
+        // Token失效了，继续本地模式
+        state.cloudSync = false
+      }
+    }
+  }
+
+  if (!success && localData.pm_cloud_ready !== true) {
+    // 本地没找到用户，也没有云标记，说明是纯本地模式
+    hideLoading()
+    errEl.textContent = '用户名或密码错误'
+    errEl.style.display = 'block'
+    btn.disabled = false
+    btn.textContent = '登 录'
+    return
+  }
+
+  // 如果有Token，尝试从云端拉取最新用户列表
+  if (!success && state.token) {
+    try {
+      const cloudData = await ghReadData()
+      const cloudUser = findUser(cloudData.users, username, password)
+      if (cloudUser) {
+        user = cloudUser
+        success = true
+        saveLocalCache(cloudData)
+      }
+    } catch(e) {
+      // 云端拉取失败，继续
+    }
+  }
+
+  hideLoading()
+
+  if (!success) {
+    errEl.textContent = '用户名或密码错误'
+    errEl.style.display = 'block'
+    btn.disabled = false
+    btn.textContent = '登 录'
+    return
+  }
+
+  // 登录成功
+  state.currentUser = user
+  applyData(localData)
+
+  // 保存登录状态
+  try { localStorage.setItem('pm_last_user', username) } catch(e) {}
+
+  // 全局密码检查
+  if (state.config.password && !isCurrentUserAdmin()) {
+    const pwd = prompt('请输入访问密码：')
+    if (pwd !== state.config.password) {
+      showToast('密码错误')
+      btn.disabled = false
+      btn.textContent = '登 录'
+      return
+    }
+  }
+
+  showToast(`✅ 欢迎，${user.name || user.username}`)
+  setTimeout(() => {
+    goPage('index', false)
+    showSyncStatus(state.cloudSync ? `☁️ ${user.name || user.username}` : `📱 ${user.name || user.username}`)
+  }, 200)
+}
+
+function findUser(users, username, password) {
+  if (!users || !users.length) return null
+  const hashed = simpleHash(password)
+  return users.find(u =>
+    u.username === username &&
+    u.password === hashed &&
+    u.status !== 'disabled'
+  ) || null
+}
+
+// ==================== Token登录（管理员） ====================
+async function doTokenLogin() {
   const token = document.getElementById('tokenInput').value.trim()
   if (!token) { showToast('请输入Token'); return }
 
-  const btn = document.getElementById('loginBtn')
-  const errEl = document.getElementById('loginErr')
-
+  const btn = document.getElementById('tokenLoginBtn')
+  const errEl = document.getElementById('tokenLoginErr')
   btn.disabled = true
   btn.textContent = '连接中…'
   errEl.style.display = 'none'
@@ -865,27 +1157,24 @@ async function doLogin() {
   state.token = token
 
   try {
-    // 1. 验证Token是否有效（通过Pages Functions代理）
     showLoading('验证Token…')
-    const user = await ghFetch('/user')
+    const ghUser = await ghFetch('/user')
+    if (!ghUser || !ghUser.login) throw new Error('Token无效')
     hideLoading()
 
-    if (!user || !user.login) throw new Error('Token无效')
-
-    // 2. 尝试读取或创建仓库
+    // 检查/创建仓库
     showLoading('检查数据仓库…')
     let data = await ghReadData()
-
-    if (data === null) {
-      // 仓库不存在，创建它
+    if (data === null || (data.products === undefined)) {
       hideLoading()
-      if (confirm('检测到这是首次使用。\n\n点击「确定」将自动创建一个名为「' + CONFIG.repo + '」的私有仓库来存放你的数据。')) {
-        showLoading('创建数据仓库…')
+      if (confirm('检测到这是首次使用。\n\n点击「确定」将自动创建私有仓库并初始化系统。')) {
+        showLoading('初始化系统中…')
         await ghCreateRepo()
-        await ghWriteData({ products: [], config: { password: '' } })
-        data = { products: [], config: { password: '' } }
+        const initData = getDefaultData()
+        await ghWriteData(initInitAdminUser(initData, ghUser.login))
+        data = initAdminData(initData, ghUser.login)
         hideLoading()
-        showToast('✅ 仓库创建成功！')
+        showToast('✅ 系统初始化成功！请设置管理员账号密码')
       } else {
         btn.disabled = false
         btn.textContent = '连接 GitHub'
@@ -895,36 +1184,50 @@ async function doLogin() {
       hideLoading()
     }
 
-    // 3. 保存Token到localStorage（下次自动登录，不用再输入）
-    try { localStorage.setItem('pm_token', token) } catch(e) {}
+    // 查找或关联管理员账户
+    state.cloudSync = true
+    let adminUser = data.users.find(u => u.role === 'admin' && u.githubLogin === ghUser.login)
 
-    // 4. 加载数据并进入主页
-    localCache = data
-    state.products = data.products || []
-    state.config = data.config || {}
+    if (!adminUser && data.users.length === 0) {
+      // 首次：还没有任何用户，自动创建管理员
+      data = initAdminData(data, ghUser.login)
+      await ghWriteData(data)
+      adminUser = data.users[0]
+    }
 
-    // 5. 密码检查
-    const needPwd = state.config.password && state.config.password.length > 0
-    if (needPwd) {
-      const pwd = prompt('请输入访问密码：')
-      if (pwd !== state.config.password) {
-        showToast('密码错误')
-        btn.disabled = false
-        btn.textContent = '连接 GitHub'
-        return
+    if (adminUser) {
+      state.currentUser = adminUser
+    } else {
+      // 找到了用户列表但没有匹配的管理员，用第一个admin
+      adminUser = data.users.find(u => u.role === 'admin')
+      if (adminUser) {
+        state.currentUser = adminUser
+      } else {
+        // 兜底：创建一个临时管理员身份
+        state.currentUser = {
+          id: generateId(),
+          username: ghUser.login,
+          name: ghUser.name || ghUser.login,
+          role: 'admin',
+          githubLogin: ghUser.login,
+          permissions: { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true },
+          status: 'active',
+        }
       }
     }
 
-    // 6. 连接成功，进入主页
-    state.cloudSync = true
+    applyData(data)
+    saveLocalCache(data)
+    localStorage.setItem('pm_token', token)
+    localStorage.setItem('pm_cloud_ready', 'true')
+
     btn.textContent = '✅ 已连接'
     btn.style.background = '#07c160'
-    showToast('✅ 云端同步已开启')
+    showToast('☁️ 管理员登录成功')
 
-    // 延迟跳转，确保UI先更新
     setTimeout(() => {
       goPage('index', false)
-      showSyncStatus(`☁️ @${user.login}`)
+      showSyncStatus(`☁️ @${ghUser.login}`)
     }, 300)
 
   } catch (err) {
@@ -936,78 +1239,226 @@ async function doLogin() {
   }
 }
 
-// 自动登录（如果有缓存的Token，直接进入，无需再次输入）
-async function autoLogin() {
-  const cachedToken = localStorage.getItem('pm_token')
-  if (!cachedToken) return
-
-  // 显示自动连接中状态
-  const btn = document.getElementById('loginBtn')
-  if (btn) {
-    btn.textContent = '自动连接中…'
-    btn.disabled = true
+function initAdminData(data, githubLogin) {
+  if (!data.users) data.users = []
+  // 检查是否已有admin
+  const existingAdmin = data.users.find(u => u.role === 'admin')
+  if (!existingAdmin) {
+    data.users.push({
+      id: generateId(),
+      username: githubLogin.toLowerCase().replace(/[^a-z0-9]/g, '') || 'admin',
+      password: '',  // 需要后续设置密码
+      name: githubLogin,
+      role: 'admin',
+      githubLogin: githubLogin,
+      permissions: { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true },
+      createdAt: new Date().toISOString(),
+      status: 'active',
+    })
   }
+  return data
+}
 
-  document.getElementById('tokenInput').value = cachedToken
-  state.token = cachedToken
+function initInitAdminUser(data, githubLogin) {
+  return initAdminData(data, githubLogin)
+}
 
-  try {
-    // 先验证Token还有效
-    const user = await ghFetch('/user')
-    if (!user || !user.login) throw new Error('Token失效')
+// ==================== 本地模式 ====================
+function useLocalMode() {
+  state.token = ''
+  state.cloudSync = false
+  state.currentUser = null
+  const cached = getLocalData()
+  applyData(cached)
 
-    // 读取数据
-    const data = await ghReadData()
-    if (data) {
-      localCache = data
-      state.products = data.products || []
-      state.config = data.config || {}
-
-      // 密码检查
-      const needPwd = state.config.password && state.config.password.length > 0
-      if (needPwd) {
-        // 有密码时需要用户手动点连接
-        if (btn) { btn.textContent = '连接 GitHub'; btn.disabled = false }
-        return
-      }
-
-      state.cloudSync = true
-      if (btn) { btn.textContent = '✅ 已连接'; btn.style.background = '#07c160' }
-
-      setTimeout(() => {
-        goPage('index', false)
-        showSyncStatus(`☁️ @${user.login}`)
-      }, 200)
-    }
-  } catch (e) {
-    // Token过期了，清除，让用户重新输入
-    localStorage.removeItem('pm_token')
-    if (btn) { btn.textContent = '连接 GitHub'; btn.disabled = false }
-    document.getElementById('tokenInput').value = ''
+  // 如果本地有用户数据，尝试自动登录第一个admin
+  const admin = cached.users.find(u => u.role === 'admin')
+  if (cached.users.length > 0 && admin) {
+    state.currentUser = admin
+    goPage('index', false)
+    showToast('✅ 本地模式（管理员）')
+    showSyncStatus('📱 本地模式')
+  } else if (cached.users.length > 0) {
+    state.currentUser = cached.users[0]
+    goPage('index', false)
+    showToast('✅ 本地模式')
+    showSyncStatus('📱 本地模式')
+  } else {
+    // 完全新用户，给个提示
+    showToast('📱 本地模式 - 请先用Token登录初始化系统')
   }
 }
 
+// ==================== 注册 ====================
+async function doRegister() {
+  const code = document.getElementById('regInviteCode').value.trim().toUpperCase()
+  const username = document.getElementById('regUsername').value.trim().toLowerCase()
+  const password = document.getElementById('regPassword').value.trim()
+  const name = document.getElementById('regName').value.trim()
+
+  if (!code || code.length !== 6) { showToast('请输入6位邀请码'); return }
+  if (!username || username.length < 2) { showToast('用户名至少2个字符'); return }
+  if (!password || password.length < 3) { showToast('密码至少3个字符'); return }
+  if (!name) { showToast('请输入你的名字'); return }
+
+  const btn = document.getElementById('regBtn')
+  const errEl = document.getElementById('regErr')
+  btn.disabled = true
+  btn.textContent = '注册中…'
+  errEl.style.display = 'none'
+
+  // 验证邀请码
+  showLoading('验证邀请码…')
+  let data
+  try {
+    data = state.cloudSync ? await ghReadData() : getLocalData()
+  } catch(e) {
+    data = getLocalData()
+  }
+  hideLoading()
+
+  const invite = (data.invites || []).find(i =>
+    i.code === code && i.status === 'active' && (i.usedBy === null || i.usedBy === undefined)
+  )
+
+  if (!invite) {
+    errEl.textContent = '邀请码无效或已过期'
+    errEl.style.display = 'block'
+    btn.disabled = false
+    btn.textContent = '注 册'
+    return
+  }
+
+  // 检查用户名是否重复
+  if ((data.users || []).some(u => u.username === username)) {
+    errEl.textContent = '该用户名已被占用'
+    errEl.style.display = 'block'
+    btn.disabled = false
+    btn.textContent = '注 册'
+    return
+  }
+
+  // 创建用户
+  const defaultPerms = {
+    brands: [],
+    hidePrice: !!data.config.hidePriceDefault,
+    canEdit: false,
+    canAdd: false,
+    canDelete: false,
+  }
+
+  const newUser = {
+    id: generateId(),
+    username: username,
+    password: simpleHash(password),
+    name: name,
+    role: 'member',
+    invitedBy: invite.createdBy,
+    inviteCode: code,
+    permissions: defaultPerms,
+    createdAt: new Date().toISOString(),
+    status: 'active',
+  }
+
+  data.users.push(newUser)
+
+  // 标记邀请码为已使用
+  const inviteIdx = data.invites.findIndex(i => i.code === code)
+  if (inviteIdx >= 0) {
+    data.invites[inviteIdx].usedBy = newUser.id
+    data.invites[inviteIdx].usedAt = new Date().toISOString()
+    data.invites[inviteIdx].status = 'used'
+  }
+
+  // 保存
+  applyData(data)
+  saveLocalCache(data)
+  if (state.cloudSync) {
+    try { await ghWriteData(data) } catch(e) { /* 继续本地 */ }
+  }
+
+  showToast('✅ 注册成功！正在登录…')
+
+  setTimeout(() => {
+    state.currentUser = newUser
+    goPage('index', false)
+    showSyncStatus(state.cloudSync ? `☁️ ${name}` : `📱 ${name}`)
+  }, 800)
+}
+
+// ==================== 自动登录 ====================
+async function autoLogin() {
+  // 1. 检查上次登录的用户名（账号登录优先）
+  const lastUser = localStorage.getItem('pm_last_user')
+  if (lastUser) {
+    const lastPwd = localStorage.getItem('pm_last_pwd')  // 不存密码，只存用户名用于提示
+    // 尝试用缓存的Token做云端账号登录
+    const cachedToken = localStorage.getItem('pm_token')
+    if (cachedToken) {
+      state.token = cachedToken
+      try {
+        const ghUser = await ghFetch('/user')
+        if (ghUser && ghUser.login) {
+          state.cloudSync = true
+          const data = await ghReadData()
+          // 查找上次登录的用户
+          const user = data.users.find(u => u.username === lastUser)
+          if (user) {
+            applyData(data)
+            saveLocalCache(data)
+            state.currentUser = user
+            document.getElementById('acctLoginBtn').textContent = '✅ 自动登录中'
+            setTimeout(() => {
+              goPage('index', false)
+              showSyncStatus(`☁️ ${user.name || user.username}`)
+            }, 300)
+            return
+          }
+        }
+      } catch(e) {
+        // Token失效
+        localStorage.removeItem('pm_token')
+      }
+    }
+  }
+
+  // 2. 检查纯本地模式的用户
+  const localData = getLocalData()
+  if (localData.users && localData.users.length > 0) {
+    const admin = localData.users.find(u => u.role === 'admin')
+    if (admin) {
+      state.currentUser = admin
+      applyData(localData)
+      // 不自动进入，让用户手动点登录
+    }
+  }
+}
+
+// ==================== 退出登录 ====================
 function doLogout() {
   if (!confirm('确定要退出登录吗？')) return
   localStorage.removeItem('pm_token')
+  localStorage.removeItem('pm_last_user')
   localStorage.removeItem('pm_cache')
   state.token = ''
+  state.currentUser = null
   state.products = []
   state.config = {}
+  state.users = []
+  state.invites = []
   state.pageStack = []
   state.dataSha = ''
+  state.cloudSync = false
   localCache = null
+  document.getElementById('loginUsername').value = ''
+  document.getElementById('loginPassword').value = ''
   document.getElementById('tokenInput').value = ''
   document.getElementById('loginErr').style.display = 'none'
+  document.getElementById('tokenLoginErr').style.display = 'none'
   goPage('login', false)
 }
 
 // ==================== 产品列表 ====================
-function loadProducts() {
-  // 先刷新数据
-  pullData(false).then(() => renderProductList())
-}
-
 function getBrands() {
   const set = new Set()
   state.products.forEach(p => { if (p.brand) set.add(p.brand) })
@@ -1018,7 +1469,7 @@ function renderBrandTabs() {
   const tabs = ['全部', ...getBrands()]
   const container = document.getElementById('brandTabs')
   container.innerHTML = tabs.map(b =>
-    `<div class="brand-tab ${b === state.currentFilter ? 'active' : ''}" onclick="filterBrand('${b}')">${b}</div>`
+    `<div class="brand-tab ${b === state.currentFilter ? 'active' : ''}" onclick="filterBrand('${b}')">${escHtml(b)}</div>`
   ).join('')
 }
 
@@ -1044,6 +1495,15 @@ function clearSearch() {
 
 function getFilteredProducts() {
   let list = [...state.products]
+
+  // 权限过滤：品牌
+  if (!hasPermission('canViewAll')) {
+    const allowedBrands = (state.currentUser.permissions || {}).brands || []
+    if (allowedBrands.length > 0) {
+      list = list.filter(p => !p.brand || allowedBrands.includes(p.brand))
+    }
+  }
+
   if (state.currentFilter !== '全部') {
     list = list.filter(p => p.brand === state.currentFilter)
   }
@@ -1054,7 +1514,6 @@ function getFilteredProducts() {
       (p.brand && p.brand.toLowerCase().includes(kw))
     )
   }
-  // 最新录入的排前面
   list.sort((a, b) => (b.create_time || '').localeCompare(a.create_time || ''))
   return list
 }
@@ -1062,7 +1521,7 @@ function getFilteredProducts() {
 function renderProductList() {
   const list = document.getElementById('productList')
   const filtered = getFilteredProducts()
-  const hidePrice = state.config.hidePrice
+  const hidePrice = !hasPermission('canViewPrice') || state.config.hidePrice || (state.currentUser && state.currentUser.permissions && state.currentUser.permissions.hidePrice)
 
   if (!filtered.length) {
     list.innerHTML = `<div class="empty-tip"><div class="empty-icon">📦</div><div class="empty-text">暂无产品</div></div>`
@@ -1090,13 +1549,6 @@ function renderProductList() {
   `).join('')
 }
 
-function escHtml(s) {
-  if (!s) return ''
-  const div = document.createElement('div')
-  div.textContent = s
-  return div.innerHTML
-}
-
 // ==================== 产品详情 ====================
 function goDetail(id) {
   const product = state.products.find(p => p.id === id)
@@ -1107,40 +1559,27 @@ function goDetail(id) {
 }
 
 function renderDetailPage(p) {
-  const hidePrice = state.config.hidePrice
+  const hidePrice = !hasPermission('canViewPrice') || state.config.hidePrice || (state.currentUser && state.currentUser.permissions && state.currentUser.permissions.hidePrice)
 
-  // 价格网格
   const priceGrid = !hidePrice ? `
     <div class="detail-price-grid">
-      <div class="price-cell">
-        <div class="price-cell-label">进价</div>
-        <div class="price-cell-value blue">${fmtMoney(p.price)}</div>
-      </div>
-      <div class="price-cell">
-        <div class="price-cell-label">卖价</div>
-        ${p.sell > 0 ? `<div class="price-cell-value green">${fmtMoney(p.sell)}</div>` : `<div class="price-cell-value gray">待填写</div>`}
-      </div>
-      <div class="price-cell">
-        <div class="price-cell-label">利润</div>
-        ${p.profit != null && p.profit !== 0 ? `<div class="price-cell-value orange">${fmtMoney(p.profit)}</div>` : `<div class="price-cell-value gray">—</div>`}
-      </div>
+      <div class="price-cell"><div class="price-cell-label">进价</div><div class="price-cell-value blue">${fmtMoney(p.price)}</div></div>
+      <div class="price-cell"><div class="price-cell-label">卖价</div>${p.sell > 0 ? `<div class="price-cell-value green">${fmtMoney(p.sell)}</div>` : `<div class="price-cell-value gray">待填写</div>`}</div>
+      <div class="price-cell"><div class="price-cell-label">利润</div>${p.profit != null && p.profit !== 0 ? `<div class="price-cell-value orange">${fmtMoney(p.profit)}</div>` : `<div class="price-cell-value gray">—</div>`}</div>
     </div>` : ''
 
-  // 特性标签
   const featureTags = (p.features || []).length ? `
     <div class="section">
       <div class="section-title">特性标签</div>
       <div class="feature-tags">${p.features.map(f => `<span class="feature-tag">${escHtml(f)}</span>`).join('')}</div>
     </div>` : ''
 
-  // 图片（支持base64）
   const imgSection = (p.images || []).length ? `
     <div class="section">
       <div class="section-title">产品图片</div>
-      <div class="img-scroll">${p.images.map((img, i) => `<img class="img-thumb" src="${img.startsWith('data:')?img:img}" onclick="openImgViewer('${img.startsWith('data:')?'_base64_'+i:img}')" data-idx="${i}">`).join('')}</div>
+      <div class="img-scroll">${p.images.map((img, i) => `<img class="img-thumb" src="${img.startsWith('data:')?img:img}" onclick="openImgViewer('_base64_${i}')" data-idx="${i}">`).join('')}</div>
     </div>` : ''
 
-  // 其他信息
   const infoSection = `
     <div class="section">
       <div class="section-title">库存信息</div>
@@ -1161,10 +1600,17 @@ function renderDetailPage(p) {
     ${infoSection}
   `
 
-  // 底部按钮
   const btns = []
-  btns.push(`<button class="btn btn-success" onclick="openSoldModal('${p.id}',${p.quantity||0})">标记卖出</button>`)
-  btns.push(`<button class="btn btn-danger" onclick="deleteProduct('${p.id}')">删除</button>`)
+  if (hasPermission('canEdit') || isCurrentUserAdmin()) {
+    btns.push(`<button class="btn btn-success" onclick="openSoldModal('${p.id}',${p.quantity||0})">标记卖出</button>`)
+  }
+  if (hasPermission('canDelete') || isCurrentUserAdmin()) {
+    btns.push(`<button class="btn btn-danger" onclick="deleteProduct('${p.id}')">删除</button>`)
+  }
+  // 至少给一个返回按钮
+  if (btns.length === 0) {
+    btns.push(`<button class="btn btn-ghost" onclick="goBack()">返回</button>`)
+  }
   document.getElementById('detailActions').innerHTML = btns.join('')
 }
 
@@ -1233,7 +1679,7 @@ document.getElementById('soldModal').addEventListener('click', function(e) {
 
 // ==================== 图片查看器 ====================
 function openImgViewer(srcOrIdx) {
-  const img = document.querySelectorAll('.img-thumb')
+  const imgs = document.querySelectorAll('.img-thumb')
   if (srcOrIdx.startsWith('_base64_')) {
     const idx = parseInt(srcOrIdx.replace('_base64_', ''))
     if (state.currentProduct && state.currentProduct.images[idx]) {
@@ -1299,7 +1745,6 @@ function calcProfit() {
   }
 }
 
-// 图片处理（转为base64存JSON）
 function renderUploadArea() {
   const area = document.getElementById('uploadArea')
   const items = state.uploadImages.map((url, i) => `
@@ -1329,17 +1774,10 @@ function pickImage() {
   input.onchange = async (e) => {
     const files = Array.from(e.target.files).slice(0, 5 - state.uploadImages.length)
     for (const file of files) {
-      if (file.size > 1024 * 512) {
-        showToast('单张图片不能超过512KB'); continue
-      }
+      if (file.size > 1024 * 512) { showToast('单张图片不能超过512KB'); continue }
       const reader = new FileReader()
-      await new Promise(resolve => {
-        reader.onload = resolve
-        reader.readAsDataURL(file)
-      })
-      if (reader.result) {
-        state.uploadImages.push(reader.result)
-      }
+      await new Promise(resolve => { reader.onload = resolve; reader.readAsDataURL(file) })
+      if (reader.result) state.uploadImages.push(reader.result)
     }
     renderUploadArea()
   }
@@ -1371,56 +1809,101 @@ async function submitForm() {
   }
 
   const now = new Date().toISOString()
-
   if (state.editProductId) {
-    // 编辑模式
     const idx = state.products.findIndex(p => p.id === state.editProductId)
-    if (idx >= 0) {
-      state.products[idx] = { ...state.products[idx], ...productData }
-    }
+    if (idx >= 0) state.products[idx] = { ...state.products[idx], ...productData }
   } else {
-    // 新增模式
-    const newProduct = {
-      id: generateId(),
-      ...productData,
-      create_time: now,
-      sold_count: 0,
-    }
-    state.products.unshift(newProduct)  // 新增的排在最前
+    const newProduct = { id: generateId(), ...productData, create_time: now, sold_count: 0 }
+    state.products.unshift(newProduct)
   }
 
   await pushData()
 
   submitBtn.disabled = false
   submitBtn.textContent = state.editProductId ? '保存修改' : '保存产品'
-
   showToast(state.editProductId ? '✅ 修改成功' : '✅ 添加成功')
 
-  if (state.editProductId) {
-    goDetail(state.editProductId)
-  } else {
-    state.editProductId = null
-    initAddPage()
-    goPage('index')
-  }
+  if (state.editProductId) { goDetail(state.editProductId) }
+  else { state.editProductId = null; initAddPage(); goPage('index') }
 }
 
 // ==================== 管理页 ====================
 function loadManageConfig() {
-  document.getElementById('mgUserCode').value = (state.config.password || '')
-  document.getElementById('permHidePrice').checked = !!state.config.hidePrice
+  document.getElementById('mgAccessPwd').value = (state.config.password || '')
+  document.getElementById('mgAccessPwdToggle').checked = !!(state.config.password)
+  document.getElementById('mgAccessPwdWrap').style.display = state.config.password ? '' : 'none'
+  document.getElementById('mgHidePriceDefault').checked = !!state.config.hidePriceDefault
+  // 邀请区：只有管理员可见
+  document.getElementById('inviteSection').style.display = isCurrentUserAdmin() ? '' : 'none'
+  renderActiveInvite()
+}
+
+function toggleMgField(fieldId) {
+  const wrap = document.getElementById(fieldId + 'Wrap')
+  wrap.style.display = wrap.style.display === 'none' ? '' : 'none'
+}
+
+function renderActiveInvite() {
+  const activeInvites = (state.invites || []).filter(i => i.status === 'active')
+  const box = document.getElementById('activeInviteBox')
+  if (activeInvites.length > 0) {
+    const inv = activeInvites[activeInvites.length - 1]  // 显示最新的
+    box.style.display = ''
+    document.getElementById('activeInviteCode').textContent = inv.code
+    const baseUrl = window.location.origin + window.location.pathname
+    document.getElementById('inviteLinkDisplay').textContent = baseUrl + '?invite=' + inv.code
+  } else {
+    box.style.display = 'none'
+  }
+}
+
+function generateInviteCode() {
+  const code = generateInviteCodeStr()
+  const invite = {
+    code: code,
+    createdBy: state.currentUser.id,
+    createdByName: state.currentUser.name || state.currentUser.username,
+    createdAt: new Date().toISOString(),
+    status: 'active',
+    usedBy: null,
+    maxUses: 1,
+  }
+  state.invites.push(invite)
+  renderActiveInvite()
+  showToast('🎫 邀请码：' + code)
+  // 自动保存
+  pushData()
 }
 
 async function saveManageConfig() {
-  state.config.password = document.getElementById('mgUserCode').value.trim()
-  state.config.hidePrice = document.getElementById('permHidePrice').checked
-
+  state.config.password = document.getElementById('mgAccessPwd').value.trim()
+  state.config.hidePriceDefault = document.getElementById('mgHidePriceDefault').checked
   await pushData()
   showToast('✅ 设置已保存')
 }
 
+function showChangePwdUI() {
+  const area = document.getElementById('changePwdArea')
+  area.style.display = area.style.display === 'none' ? '' : 'none'
+}
+
+async function changeMyPassword() {
+  const newPwd = document.getElementById('newPwdInput').value.trim()
+  if (!newPwd || newPwd.length < 3) { showToast('密码至少3个字符'); return }
+  if (!state.currentUser) return
+  const idx = state.users.findIndex(u => u.id === state.currentUser.id)
+  if (idx >= 0) {
+    state.users[idx].password = simpleHash(newPwd)
+    await pushData()
+    showToast('✅ 密码修改成功')
+    document.getElementById('changePwdArea').style.display = 'none'
+    document.getElementById('newPwdInput').value = ''
+  }
+}
+
 function exportData() {
-  const data = { products: state.products, config: state.config, exportTime: new Date().toISOString() }
+  const data = collectData()
+  data.exportTime = new Date().toISOString()
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -1438,18 +1921,157 @@ function importData(event) {
   reader.onload = async (e) => {
     try {
       const imported = JSON.parse(e.target.result)
-      if (!confirm(`即将导入 ${imported.products ? imported.products.length : 0} 条产品数据，是否继续？\n（现有数据将被覆盖）`)) return
-      state.products = imported.products || []
-      state.config = { ...state.config, ...(imported.config || {}) }
+      if (!confirm(`即将导入 ${(imported.products||[]).length} 条产品、${(imported.users||[]).length} 个用户的数据，是否继续？\n（现有数据将被覆盖）`)) return
+      applyData(imported)
       await pushData()
       showToast('✅ 导入成功')
       loadManageConfig()
-    } catch (err) {
+      if (imported.users && imported.users.length) renderUserList()
+    } catch(err) {
       showToast('文件格式错误')
     }
   }
-  reader.readAsText(file)
-  event.target.value = ''  // 重置以便重复选择同一文件
+  reader.readAsText(event.target.value = '')
+}
+
+// ==================== 用户管理 ====================
+function renderUserList() {
+  const area = document.getElementById('userListArea')
+  const users = state.users || []
+  if (!users.length) {
+    area.innerHTML = '<div class="empty-tip" style="padding:40px 0"><div class="empty-icon">👥</div><div class="empty-text">暂无其他用户</div></div>'
+    return
+  }
+
+  area.innerHTML = users.map(u => {
+    const perm = u.permissions || {}
+    const brandInfo = perm.brands && perm.brands.length > 0 ? perm.brands.join('、') : '全部品牌'
+    return `
+    <div class="user-card">
+      <div class="user-card-header">
+        <span class="user-name">${escHtml(u.name || u.username)}</span>
+        <span class="user-role-badge ${u.role === 'admin' ? 'role-admin' : 'role-member'}">${u.role === 'admin' ? '管理员' : '成员'}</span>
+      </div>
+      <div class="user-info">
+        👤 @${escHtml(u.username)}<br>
+        🏷️ 可见：${escHtml(brandInfo)}<br>
+        💰 价格：${perm.hidePrice ? '隐藏' : '可见'} | ✏️ 编辑：${perm.canEdit ? '允许' : '禁止'} | ➕ 添加：${perm.canAdd ? '允许' : '禁止'}
+      </div>
+      <div class="user-actions">
+        ${u.id !== (state.currentUser || {}).id ? `
+          <button class="btn btn-primary" onclick="editUserPerm('${u.id}')">编辑权限</button>
+          ${u.status !== 'disabled' ? '<button class="btn btn-danger" style="padding:7px 14px;font-size:12px" onclick="disableUser(\'' + u.id + '\')">禁用</button>' : '<button class="btn btn-success" style="padding:7px 14px;font-size:12px" onclick="enableUser(\'' + u.id + '\')">启用</button>'}
+          ${u.role !== 'admin' ? '<button class="btn btn-ghost" style="padding:7px 14px;font-size:12px" onclick="setUserAdmin(\'' + u.id + '\')">设为管理员</button>' : ''}
+        ` : '<span style="font-size:12px;color:var(--text-sub)">← 这是你自己</span>'}
+      </div>
+    </div>
+    `}).join('')
+}
+
+function editUserPerm(userId) {
+  const user = state.users.find(u => u.id === userId)
+  if (!user) return
+  state.editingUserId = userId
+  const perm = user.permissions || {}
+
+  const allBrands = getBrands()
+  const selectedBrands = perm.brands || []
+
+  document.getElementById('permModalTitle').textContent = `编辑权限 - ${user.name || user.username}`
+  document.getElementById('permModalBody').innerHTML = `
+    <div class="perm-group">
+      <div class="perm-group-label">可见品牌（不选则可看全部）</div>
+      <div class="perm-brand-chips">
+        ${allBrands.length > 0 ? allBrands.map(b =>
+          `<span class="perm-brand-chip ${selectedBrands.includes(b) ? 'selected' : ''}" onclick="togglePermBrand(this,'${b}')">${escHtml(b)}</span>`
+        ).join('') : '<span style="font-size:12px;color:#bbb">暂无品牌数据</span>'}
+      </div>
+    </div>
+    <div class="perm-group">
+      <div class="perm-group-label">价格权限</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="permHidePrice" ${perm.hidePrice ? 'checked' : ''}> 隐藏进价/利润信息
+      </label>
+    </div>
+    <div class="perm-group">
+      <div class="perm-group-label">操作权限</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:8px;cursor:pointer">
+        <input type="checkbox" id="permCanEdit" ${perm.canEdit ? 'checked' : ''}> 允许编辑产品
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:8px;cursor:pointer">
+        <input type="checkbox" id="permCanAdd" ${perm.canAdd ? 'checked' : ''}> 允许添加产品
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="permCanDelete" ${perm.canDelete ? 'checked' : ''}> 允许删除产品
+      </label>
+    </div>
+  `
+  document.getElementById('permModal').classList.add('show')
+}
+
+// 临时存储选中品牌
+window._selectedPermBrands = []
+function togglePermBrand(el, brand) {
+  el.classList.toggle('selected')
+  const chips = document.querySelectorAll('.perm-brand-chip.selected')
+  window._selectedPermBrands = Array.from(chips).map(c => c.textContent)
+}
+
+function closePermModal() {
+  document.getElementById('permModal').classList.remove('show')
+  state.editingUserId = null
+}
+
+async function saveUserPerm() {
+  if (!state.editingUserId) return
+  const idx = state.users.findIndex(u => u.id === state.editingUserId)
+  if (idx < 0) return
+
+  state.users[idx].permissions = {
+    brands: window._selectedPermBrands || [],
+    hidePrice: !!document.getElementById('permHidePrice').checked,
+    canEdit: !!document.getElementById('permCanEdit').checked,
+    canAdd: !!document.getElementById('permCanAdd').checked,
+    canDelete: !!document.getElementById('permCanDelete').checked,
+  }
+
+  await pushData()
+  closePermModal()
+  renderUserList()
+  showToast('✅ 权限已更新')
+}
+
+async function disableUser(userId) {
+  if (!confirm('确定禁用该用户？禁用后将无法登录')) return
+  const idx = state.users.findIndex(u => u.id === userId)
+  if (idx >= 0) {
+    state.users[idx].status = 'disabled'
+    await pushData()
+    renderUserList()
+    showToast('已禁用')
+  }
+}
+
+async function enableUser(userId) {
+  const idx = state.users.findIndex(u => u.id === userId)
+  if (idx >= 0) {
+    state.users[idx].status = 'active'
+    await pushData()
+    renderUserList()
+    showToast('已启用')
+  }
+}
+
+async function setUserAdmin(userId) {
+  if (!confirm('确定将该用户提升为管理员？\n管理员拥有所有权限')) return
+  const idx = state.users.findIndex(u => u.id === userId)
+  if (idx >= 0) {
+    state.users[idx].role = 'admin'
+    state.users[idx].permissions = { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true }
+    await pushData()
+    renderUserList()
+    showToast('✅ 已设为管理员')
+  }
 }
 
 // ==================== 初始化 ====================
