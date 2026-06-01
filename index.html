@@ -1420,7 +1420,7 @@ async function doManualSync() {
     applyData(finalData)
     saveLocalCache(finalData)
     state.pendingCount = 0
-    renderProducts()
+    renderProductList()
     showSyncStatus('✅ 已同步到云端')
     showToast('✅ 数据已同步到云端')
   } catch (err) {
