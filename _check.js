@@ -232,23 +232,62 @@ async function pushData() {
   const data = collectData()
   saveLocalCache(data)
 
-  if (!state.cloudSync) {
-    state.pendingCount++
+  // 没有Token/没联网时只存本地
+  const hasToken = !!localStorage.getItem('pm_token')
+  if (!state.cloudSync || !hasToken) {
+    state.pendingCount = Math.max(1, (state.pendingCount || 0) + 1)
     showSyncStatus('💾 已保存（本地）')
     updateSyncUI()
     return true
   }
+
   showSyncStatus('正在同步…')
   try {
+    // 先拉最新的sha，避免冲突
+    let latestData = null
+    try {
+      latestData = await ghReadData()
+    } catch(e) {
+      // 拉取失败继续用旧sha尝试写
+    }
+    if (latestData) {
+      // 合并：本地产品优先（最新操作），用户/邀请码合并
+      data.products = data.products || []
+      data.users = mergeUsers(latestData.users || [], data.users || [])
+      data.invites = latestData.invites || data.invites || []
+      applyData(data)
+      saveLocalCache(data)
+    }
+
     await ghWriteData(data)
     state.pendingCount = 0
     showSyncStatus('✅ 已同步')
     updateSyncUI()
     return true
   } catch (err) {
-    state.pendingCount++
-    showSyncStatus(`⚠️ 待同步(${state.pendingCount})`)
-    showToast('网络异常，已保存到本地，恢复网络后点击🔄同步')
+    state.pendingCount = Math.max(1, (state.pendingCount || 0) + 1)
+    const errMsg = err.message || ''
+    if (errMsg.includes('404') || errMsg.includes('Not Found')) {
+      showSyncStatus('❌ 仓库不存在')
+      showToast('云端仓库未初始化，请用管理员Token登录')
+    } else if (errMsg.includes('409') || errMsg.includes('SHA')) {
+      showSyncStatus('⚠️ 数据冲突')
+      showToast('数据冲突，正在重新获取…')
+      // 重置sha重试一次
+      state.dataSha = ''
+      try {
+        await ghWriteData(collectData())
+        state.pendingCount = 0
+        showSyncStatus('✅ 已同步')
+        showToast('✅ 同步成功')
+      } catch(e2) {
+        showSyncStatus(`⚠️ 待同步(${state.pendingCount})`)
+        showToast('同步失败，已保存在本地')
+      }
+    } else {
+      showSyncStatus(`⚠️ 待同步(${state.pendingCount})`)
+      showToast('网络异常，已保存到本地，恢复网络后点🔄同步')
+    }
     updateSyncUI()
     return false
   }
@@ -500,6 +539,43 @@ async function doTokenLogin() {
     saveLocalCache(data)
     localStorage.setItem('pm_token', token)
     localStorage.setItem('pm_cloud_ready', 'true')
+
+    // 检查管理员是否已设置密码，没有则弹出设置
+    if (adminUser && !adminUser.password) {
+      btn.textContent = '✅ 已连接'
+      btn.style.background = '#07c160'
+      showToast('☁️ 连接成功！请设置你的登录账号')
+      setTimeout(() => {
+        const newUsername = prompt('设置你的管理员用户名（英文/数字）:', adminUser.username || 'admin')
+        if (!newUsername || !newUsername.trim()) {
+          showToast('需要设置用户名才能继续')
+          btn.disabled = false
+          btn.textContent = '连接 GitHub'
+          return
+        }
+        const newPassword = prompt('设置你的登录密码:')
+        if (!newPassword || !newPassword.trim()) {
+          showToast('需要设置密码才能继续')
+          btn.disabled = false
+          btn.textContent = '连接 GitHub'
+          return
+        }
+        // 更新管理员账号信息
+        adminUser.username = newUsername.trim().toLowerCase().replace(/[^a-z0-9]/g, '') || 'admin'
+        adminUser.password = simpleHash(newPassword.trim())
+        adminUser.name = adminUser.name || newUsername.trim()
+        state.currentUser = adminUser
+        pushData()
+        localStorage.setItem('pm_last_user', adminUser.username)
+
+        btn.textContent = '✅ 设置完成'
+        setTimeout(() => {
+          goPage('index', false)
+          showSyncStatus(`☁️ ${adminUser.name || adminUser.username}`)
+        }, 300)
+      }, 500)
+      return
+    }
 
     btn.textContent = '✅ 已连接'
     btn.style.background = '#07c160'
