@@ -1154,14 +1154,9 @@ async function doAccountLogin() {
   }
 
   // 登录成功
+  hideLoading()
   state.currentUser = foundUser
   applyData(localData.users.length > 0 ? localData : getLocalData())
-
-  // 如果是管理员且有Token，保持云端连接
-  if (!state.cloudSync && cachedToken && foundUser.role === 'admin') {
-    state.token = cachedToken
-    try { await apiFetch('/api/user'); state.cloudSync = true } catch(e) {}
-  }
 
   // 保存登录状态
   try { localStorage.setItem('pm_last_user', username) } catch(e) {}
@@ -1178,10 +1173,20 @@ async function doAccountLogin() {
   }
 
   showToast(`✅ 欢迎，${foundUser.name || foundUser.username}`)
-  setTimeout(() => {
-    goPage('index', false)
-    showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
-  }, 200)
+  goPage('index', false)
+  showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
+
+  // 如果是管理员且有Token，后台尝试连接云端（不阻塞界面）
+  if (!state.cloudSync && cachedToken && foundUser.role === 'admin') {
+    state.token = cachedToken
+    apiFetch('/api/user').then(() => {
+      state.cloudSync = true
+      showSyncStatus(`☁️ ${foundUser.name || foundUser.username}`)
+      showToast('☁️ 云端连接成功')
+    }).catch(() => {
+      // 云端连不上，保持本地模式
+    })
+  }
 }
 
 function findUser(users, username, password) {
