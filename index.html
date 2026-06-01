@@ -748,7 +748,7 @@ a{text-decoration:none;color:inherit}
 <script>
 // ==================== 配置 ====================
 // 阿里云函数计算 API 地址（部署后填入实际URL）
-const API_BASE = 'https://chanpinmingxi-api.cn-shanghai.fcapp.run'
+const API_BASE = 'https://chanpinngxi-api-byliwofhzb.cn-hangzhou.fcapp.run'
 
 const CONFIG = {
   // 保留用于本地模式兼容
@@ -877,12 +877,22 @@ async function apiFetch(path, options = {}) {
   if (state.token) {
     headers['Authorization'] = `Bearer ${state.token}`
   }
-  const res = await fetch(url, { ...options, headers })
-  if (!res.ok) {
-    const errBody = await res.json().catch(() => ({}))
-    throw new Error(errBody.message || `请求失败 (${res.status})`)
+  // 8秒超时，避免网络不通时卡死
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 8000)
+  try {
+    const res = await fetch(url, { ...options, headers, signal: controller.signal })
+    clearTimeout(timer)
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}))
+      throw new Error(errBody.message || `请求失败 (${res.status})`)
+    }
+    return res.json()
+  } catch(e) {
+    clearTimeout(timer)
+    if (e.name === 'AbortError') throw new Error('网络连接超时（云端不可达），已切换到本地模式')
+    throw e
   }
-  return res.json()
 }
 
 async function readCloudData() {
