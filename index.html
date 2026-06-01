@@ -631,6 +631,10 @@ a{text-decoration:none;color:inherit}
         <div class="form-label">卖价（元）</div>
         <input class="form-input" id="fieldSell" type="number" placeholder="可留空，卖出时填写" step="0.01" oninput="calcProfit()">
       </div>
+      <div class="form-row">
+        <div class="form-label">进货时间</div>
+        <input class="form-input" id="fieldPurchaseTime" type="date" placeholder="选择进货日期">
+      </div>
       <div class="profit-preview" id="profitPreview" style="display:none">
         <span class="profit-preview-label">预计利润</span>
         <span class="profit-preview-value" id="profitPreviewVal">¥0</span>
@@ -647,7 +651,7 @@ a{text-decoration:none;color:inherit}
       </div>
     </div>
     <div class="form-section">
-      <div class="form-section-title">产品图片（最多5张）</div>
+      <div class="form-section-title">产品图片（最多7张）</div>
       <div class="img-upload-area" id="uploadArea"></div>
     </div>
   </div>
@@ -709,9 +713,19 @@ a{text-decoration:none;color:inherit}
 
   <!-- 每周报表 -->
   <div class="manage-section" id="weeklyReportSection">
-    <div class="manage-section-title">📊 每周报表</div>
+    <div class="manage-section-title">📊 报表统计</div>
     <div class="manage-row">
-      <div><div class="manage-row-label">每周进货统计</div><div class="manage-row-sub">按周汇总进货总量与总价</div></div>
+      <div>
+        <div class="manage-row-label">时间范围</div>
+        <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+          <input class="form-input" id="reportStartDate" type="date" style="width:130px;padding:8px 10px;font-size:13px">
+          <span style="color:var(--text-sub)">~</span>
+          <input class="form-input" id="reportEndDate" type="date" style="width:130px;padding:8px 10px;font-size:13px">
+        </div>
+      </div>
+    </div>
+    <div class="manage-row">
+      <div><div class="manage-row-label">进货统计报表</div><div class="manage-row-sub">按周汇总进货总量与总价</div></div>
       <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="showWeeklyReport()">查看报表</button>
     </div>
   </div>
@@ -880,11 +894,16 @@ function atou(str) {
 }
 
 function isCurrentUserAdmin() {
-  return state.currentUser && state.currentUser.role === 'admin'
+  return state.currentUser && (state.currentUser.role === 'admin' || state.currentUser.role === 'super_admin')
+}
+
+function isCurrentUserSuperAdmin() {
+  return state.currentUser && state.currentUser.role === 'super_admin'
 }
 
 function hasPermission(perm) {
   if (!state.currentUser) return false
+  if (isCurrentUserSuperAdmin()) return true
   if (isCurrentUserAdmin()) return true
   const p = state.currentUser.permissions || {}
   if (perm === 'canViewAll') return !(p.brands && p.brands.length > 0)
@@ -1233,7 +1252,7 @@ async function doAccountLogin() {
   showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
 
   // 管理员登录后，后台尝试连接云端（FC 后端不需要 Token）
-  if (!state.cloudSync && foundUser.role === 'admin') {
+  if (!state.cloudSync && (foundUser.role === 'admin' || foundUser.role === 'super_admin')) {
     apiFetch('/api/data').then(() => {
       state.cloudSync = true
       showSyncStatus(`☁️ ${foundUser.name || foundUser.username}`)
@@ -1313,10 +1332,10 @@ async function doTokenLogin() {
     state.cloudSync = true
     // 兜底：确保 users 是数组
     if (!Array.isArray(data.users)) data.users = []
-    let adminUser = data.users.find(u => u.role === 'admin')
+    let adminUser = data.users.find(u => u.role === 'super_admin' || u.role === 'admin')
 
     if (!adminUser || data.users.length === 0) {
-      // 首次：还没有任何用户，自动创建管理员
+      // 首次：还没有任何用户，自动创建超级管理员
       data = initAdminData(data, apiUser.login)
       await writeCloudData(data)
       adminUser = data.users[0]
@@ -1400,15 +1419,15 @@ async function doTokenLogin() {
 function initAdminData(data, loginName) {
   // 兼容：后端旧数据 users 可能是对象
   if (!Array.isArray(data.users)) data.users = []
-  // 检查是否已有admin
-  const existingAdmin = data.users.find(u => u.role === 'admin')
+  // 检查是否已有super_admin或admin
+  const existingAdmin = data.users.find(u => u.role === 'super_admin' || u.role === 'admin')
   if (!existingAdmin) {
     data.users.push({
       id: generateId(),
       username: loginName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'admin',
       password: '',  // 需要后续设置密码
       name: loginName,
-      role: 'admin',
+      role: 'super_admin',
       giteeLogin: loginName,
       permissions: { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true },
       createdAt: new Date().toISOString(),
@@ -1517,7 +1536,7 @@ function useLocalMode() {
     }
   }
 
-  // 兜底：有用户数据就用第一个可用用户
+    // 兜底：有用户数据就用第一个可用用户
   if (cached.users && cached.users.length > 0) {
     const avail = cached.users.find(u => u.status !== 'disabled') || cached.users[0]
     state.currentUser = avail
@@ -1535,7 +1554,7 @@ function useLocalMode() {
     username: 'admin',
     name: '本地管理员',
     password: '',
-    role: 'admin',
+    role: 'super_admin',
     status: 'active',
     permissions: {
       viewBrands: [],
@@ -1714,7 +1733,7 @@ async function autoLogin() {
   // 2. 检查纯本地模式的用户（原有逻辑）
   const localData = getLocalData()
   if (localData.users && localData.users.length > 0) {
-    const admin = localData.users.find(u => u.role === 'admin')
+    const admin = localData.users.find(u => u.role === 'admin' || u.role === 'super_admin')
     if (admin) {
       state.currentUser = admin
       applyData(localData)
@@ -1783,6 +1802,19 @@ function clearSearch() {
   renderProductList()
 }
 
+function smartSearch(product, keyword) {
+  if (!keyword) return true
+  const kws = keyword.toLowerCase().trim().split(/\s+/).filter(Boolean)
+  if (!kws.length) return true
+  const text = [
+    product.model || '',
+    product.brand || '',
+    (product.features || []).join(' '),
+    product.purchase_time || ''
+  ].join(' ').toLowerCase()
+  return kws.every(k => text.includes(k))
+}
+
 function getFilteredProducts() {
   let list = [...state.products]
 
@@ -1798,11 +1830,7 @@ function getFilteredProducts() {
     list = list.filter(p => p.brand === state.currentFilter)
   }
   if (state.searchKeyword) {
-    const kw = state.searchKeyword.toLowerCase()
-    list = list.filter(p =>
-      (p.model && p.model.toLowerCase().includes(kw)) ||
-      (p.brand && p.brand.toLowerCase().includes(kw))
-    )
+    list = list.filter(p => smartSearch(p, state.searchKeyword))
   }
   list.sort((a, b) => (b.create_time || '').localeCompare(a.create_time || ''))
   return list
@@ -1824,7 +1852,7 @@ function renderProductList() {
   list.innerHTML = filtered.map(p => `
     <div class="product-card" onclick="goDetail('${p.id}')">
       <div class="product-card-header">
-        <span class="product-model">${escHtml(p.model)}</span>
+        <span class="product-model">${p.brand ? escHtml(p.brand + ' ') : ''}${escHtml(p.model)}</span>
         ${p.brand ? `<span class="product-brand">${escHtml(p.brand)}</span>` : ''}
         ${(p.quantity||0) <= 0 ? '<span class="sold-badge">已售罄</span>' : ''}
       </div>
@@ -1875,6 +1903,7 @@ function renderDetailPage(p) {
       <div class="section-title">库存信息</div>
       <div class="info-row"><span class="info-key">当前库存</span><span class="info-val">${p.quantity || 0} 件</span></div>
       <div class="info-row"><span class="info-key">累计已售</span><span class="info-val">${p.sold_count || 0} 件</span></div>
+      <div class="info-row"><span class="info-key">进货时间</span><span class="info-val">${p.purchase_time || '—'}</span></div>
       <div class="info-row"><span class="info-key">录入时间</span><span class="info-val">${p.create_time ? p.create_time.slice(0, 19) : '—'}</span></div>
       <div class="info-row"><span class="info-key">最后更新</span><span class="info-val">${p.update_time ? p.update_time.slice(0, 19) : '—'}</span></div>
     </div>`
@@ -1996,6 +2025,7 @@ function initAddPage(product) {
   document.getElementById('fieldPrice').value = product ? (product.price || '') : ''
   document.getElementById('fieldSell').value = product ? (product.sell || '') : ''
   document.getElementById('fieldQty').value = product ? (product.quantity || 1) : 1
+  document.getElementById('fieldPurchaseTime').value = product ? (product.purchase_time || '') : ''
   state.uploadImages = product ? [...(product.images || [])] : []
   calcProfit()
   renderUploadArea()
@@ -2043,7 +2073,7 @@ function renderUploadArea() {
       <div class="img-delete" onclick="removeUploadImg(${i})">×</div>
     </div>
   `).join('')
-  const addBtn = state.uploadImages.length < 5 ? `
+  const addBtn = state.uploadImages.length < 7 ? `
     <div class="img-add-btn" onclick="pickImage()">
       <span class="icon">📷</span>
       <span>添加图片</span>
@@ -2062,7 +2092,7 @@ function pickImage() {
   input.accept = 'image/*'
   input.multiple = true
   input.onchange = async (e) => {
-    const files = Array.from(e.target.files).slice(0, 5 - state.uploadImages.length)
+    const files = Array.from(e.target.files).slice(0, 7 - state.uploadImages.length)
     for (const file of files) {
       if (file.size > 1024 * 512) { showToast('单张图片不能超过512KB'); continue }
       const reader = new FileReader()
@@ -2093,6 +2123,7 @@ async function submitForm() {
     price: parseFloat(price),
     sell: parseFloat(document.getElementById('fieldSell').value) || 0,
     quantity: parseInt(document.getElementById('fieldQty').value) || 0,
+    purchase_time: document.getElementById('fieldPurchaseTime').value || '',
     features,
     images: state.uploadImages,
     update_time: new Date().toISOString(),
@@ -2233,14 +2264,25 @@ function renderUserList() {
     return
   }
 
+  const currentId = (state.currentUser || {}).id
+  const isSuper = isCurrentUserSuperAdmin()
+  const isAdmin = isCurrentUserAdmin()
+
   area.innerHTML = users.map(u => {
     const perm = u.permissions || {}
     const brandInfo = perm.brands && perm.brands.length > 0 ? perm.brands.join('、') : '全部品牌'
+    const roleLabel = u.role === 'super_admin' ? '超级管理员' : (u.role === 'admin' ? '管理员' : '成员')
+    const roleClass = u.role === 'super_admin' ? 'role-admin' : (u.role === 'admin' ? 'role-admin' : 'role-member')
+    // 权限控制：自己不能管理自己；admin不能管理super_admin和其他admin；super_admin可以管理所有人
+    const canManage = u.id !== currentId && (isSuper || (isAdmin && u.role === 'member'))
+    const canSetAdmin = canManage && u.role === 'member'
+    const canEditRole = isSuper && u.id !== currentId
+
     return `
     <div class="user-card">
       <div class="user-card-header">
         <span class="user-name">${escHtml(u.name || u.username)}</span>
-        <span class="user-role-badge ${u.role === 'admin' ? 'role-admin' : 'role-member'}">${u.role === 'admin' ? '管理员' : '成员'}</span>
+        <span class="user-role-badge ${roleClass}">${roleLabel}</span>
       </div>
       <div class="user-info">
         👤 @${escHtml(u.username)}<br>
@@ -2248,14 +2290,16 @@ function renderUserList() {
         💰 价格：${perm.hidePrice ? '隐藏' : '可见'} | ✏️ 编辑：${perm.canEdit ? '允许' : '禁止'} | ➕ 添加：${perm.canAdd ? '允许' : '禁止'}
       </div>
       <div class="user-actions">
-        ${u.id !== (state.currentUser || {}).id ? `
+        ${canManage ? `
           <button class="btn btn-primary" onclick="editUserPerm('${u.id}')">编辑权限</button>
           ${u.status !== 'disabled' ? '<button class="btn btn-danger" style="padding:7px 14px;font-size:12px" onclick="disableUser(\'' + u.id + '\')">禁用</button>' : '<button class="btn btn-success" style="padding:7px 14px;font-size:12px" onclick="enableUser(\'' + u.id + '\')">启用</button>'}
-          ${u.role !== 'admin' ? '<button class="btn btn-ghost" style="padding:7px 14px;font-size:12px" onclick="setUserAdmin(\'' + u.id + '\')">设为管理员</button>' : ''}
-        ` : '<span style="font-size:12px;color:var(--text-sub)">← 这是你自己</span>'}
+          ${canSetAdmin ? '<button class="btn btn-ghost" style="padding:7px 14px;font-size:12px" onclick="setUserAdmin(\'' + u.id + '\')">设为管理员</button>' : ''}
+          ${canEditRole ? `<button class="btn btn-ghost" style="padding:7px 14px;font-size:12px" onclick="setUserRole('${u.id}')">调整角色</button>` : ''}
+        ` : '<span style="font-size:12px;color:var(--text-sub)">← 这是你自己' + (u.role === 'super_admin' ? '（超级管理员）' : '') + '</span>'}
       </div>
     </div>
-    `}).join('')
+    `
+  }).join('')
 }
 
 function editUserPerm(userId) {
@@ -2353,7 +2397,13 @@ async function enableUser(userId) {
 }
 
 async function setUserAdmin(userId) {
-  if (!confirm('确定将该用户提升为管理员？\n管理员拥有所有权限')) return
+  if (!confirm('确定将该用户提升为管理员？\n管理员可以管理普通用户')) return
+  // 只有super_admin或admin才能执行此操作，且admin只能提升member
+  const target = state.users.find(u => u.id === userId)
+  if (!target) return
+  if (!isCurrentUserSuperAdmin() && (!isCurrentUserAdmin() || target.role !== 'member')) {
+    showToast('没有权限'); return
+  }
   const idx = state.users.findIndex(u => u.id === userId)
   if (idx >= 0) {
     state.users[idx].role = 'admin'
@@ -2361,6 +2411,34 @@ async function setUserAdmin(userId) {
     await pushData()
     renderUserList()
     showToast('✅ 已设为管理员')
+  }
+}
+
+async function setUserRole(userId) {
+  // 只有超级管理员可以调整角色
+  if (!isCurrentUserSuperAdmin()) { showToast('只有超级管理员可以调整角色'); return }
+  const user = state.users.find(u => u.id === userId)
+  if (!user) return
+  if (user.id === (state.currentUser || {}).id) { showToast('不能调整自己的角色'); return }
+  const roles = [
+    { val: 'member', label: '普通成员（只能查看和操作被授权的内容）' },
+    { val: 'admin', label: '管理员（可以管理普通用户）' },
+    { val: 'super_admin', label: '超级管理员（可以管理所有人）' }
+  ]
+  const choice = prompt(`调整 ${user.name || user.username} 的角色：\n\n1. 普通成员\n2. 管理员\n3. 超级管理员\n\n请输入数字 1/2/3：`, user.role === 'super_admin' ? '3' : (user.role === 'admin' ? '2' : '1'))
+  if (!choice) return
+  const map = { '1': 'member', '2': 'admin', '3': 'super_admin' }
+  const newRole = map[choice.trim()]
+  if (!newRole) { showToast('无效选择'); return }
+  const idx = state.users.findIndex(u => u.id === userId)
+  if (idx >= 0) {
+    state.users[idx].role = newRole
+    if (newRole === 'super_admin') {
+      state.users[idx].permissions = { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true }
+    }
+    await pushData()
+    renderUserList()
+    showToast('✅ 角色已更新')
   }
 }
 
@@ -2375,6 +2453,7 @@ function exportExcel() {
     '库存': p.quantity || 0,
     '已售': p.sold_count || 0,
     '利润': p.profit || 0,
+    '进货时间': p.purchase_time || '',
     '创建时间': p.create_time || '',
   }))
   const ws = XLSX.utils.json_to_sheet(rows)
@@ -2387,6 +2466,7 @@ function exportExcel() {
     { wch: 8 },  // 库存
     { wch: 8 },  // 已售
     { wch: 10 }, // 利润
+    { wch: 12 }, // 进货时间
     { wch: 20 }, // 创建时间
   ]
   const wb = XLSX.utils.book_new()
@@ -2399,12 +2479,23 @@ function exportExcel() {
 // ==================== 每周报表 ====================
 function showWeeklyReport() {
   if (!state.products || !state.products.length) { showToast('没有产品数据'); return }
+
+  // 读取时间范围
+  const startDate = document.getElementById('reportStartDate').value
+  const endDate = document.getElementById('reportEndDate').value
+  const startTs = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0
+  const endTs = endDate ? new Date(endDate + 'T23:59:59').getTime() : Infinity
+
   // 按周分组
   const weekMap = {}
   state.products.forEach(p => {
-    if (!p.create_time) return
-    const d = new Date(p.create_time)
+    // 优先使用进货时间，没有则用录入时间
+    const timeStr = p.purchase_time || p.create_time
+    if (!timeStr) return
+    const d = new Date(timeStr)
     if (isNaN(d)) return
+    const ts = d.getTime()
+    if (ts < startTs || ts > endTs) return
     // 计算ISO周（周一为一周开始）
     const day = d.getDay()
     const diff = d.getDate() - day + (day === 0 ? -6 : 1)
@@ -2417,16 +2508,20 @@ function showWeeklyReport() {
     weekMap[key].count++
     weekMap[key].totalQty += originQty
     weekMap[key].totalValue += (p.price || 0) * originQty
-    weekMap[key].products.push(p.model || '')
+    weekMap[key].products.push({ model: p.model || '', brand: p.brand || '', qty: originQty, price: p.price || 0 })
   })
   const weeks = Object.values(weekMap).sort((a,b) => b.weekStart.localeCompare(a.weekStart))
-  if (!weeks.length) { showToast('没有按周统计的数据'); return }
+  if (!weeks.length) { showToast('该时间段内没有数据'); return }
+
+  const rangeText = startDate && endDate ? `${startDate} ~ ${endDate}` : (startDate ? `从 ${startDate} 至今` : (endDate ? `截止 ${endDate}` : '全部时间'))
+
   // 生成报表HTML
-  let html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>每周进货报表</title>
+  let html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>进货统计报表</title>
   <style>
     body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;padding:20px;background:#f5f6fa;color:#1a1a2e}
-    h2{text-align:center;margin-bottom:20px;color:#2E7D32}
-    table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    h2{text-align:center;margin-bottom:8px;color:#2E7D32}
+    .range-info{text-align:center;color:#666;margin-bottom:20px;font-size:13px}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:20px}
     th{background:#2E7D32;color:#fff;padding:10px 12px;text-align:left;font-size:13px}
     td{padding:9px 12px;border-bottom:1px solid #eee;font-size:13px}
     tr:last-child td{border-bottom:none}
@@ -2434,23 +2529,24 @@ function showWeeklyReport() {
     .total-row{background:#e8f5e9;font-weight:700}
     .week-header{background:#c8e6c9;font-weight:600;color:#1b5e20}
   </style></head><body>
-  <h2>📊 每周进货报表</h2>
-  <p style="text-align:center;color:#666;margin-bottom:16px;font-size:13px">生成时间：${new Date().toLocaleString('zh-CN')}</p>`
+  <h2>📊 进货统计报表</h2>
+  <div class="range-info">时间范围：${rangeText}<br>生成时间：${new Date().toLocaleString('zh-CN')}</div>`
   let grandTotalQty = 0, grandTotalValue = 0
   weeks.forEach(w => {
-    html += `<table style="margin-bottom:20px">
-      <tr class="week-header"><td colspan="4">📅 周期：${w.weekStart} ~ ${new Date(new Date(w.weekStart).getTime()+6*8640000).toISOString().slice(0,10)}（共 ${w.count} 款产品）</td></tr>
-      <tr><th>型号</th><th>进货量</th><th>进货总价(元)</th><th>详情</th></tr>`
-    w.products.forEach((model, i) => {
-      html += `<tr><td>${escHtml(model)}</td><td class="num">—</td><td class="num">—</td><td style="font-size:11px;color:#999">仅汇总可见</td></tr>`
+    html += `<table>
+      <tr class="week-header"><td colspan="5">📅 周期：${w.weekStart} ~ ${new Date(new Date(w.weekStart).getTime()+6*86400000).toISOString().slice(0,10)}（共 ${w.count} 款产品）</td></tr>
+      <tr><th>品牌</th><th>型号</th><th>进货量</th><th>单价(元)</th><th>小计(元)</th></tr>`
+    w.products.forEach(p => {
+      const itemValue = p.qty * p.price
+      html += `<tr><td>${escHtml(p.brand)}</td><td>${escHtml(p.model)}</td><td class="num">${p.qty}</td><td class="num">¥${p.price.toFixed(2)}</td><td class="num">¥${itemValue.toFixed(2)}</td></tr>`
     })
-    html += `<tr class="total-row"><td>小计</td><td class="num">${w.totalQty}</td><td class="num">¥${w.totalValue.toFixed(2)}</td><td></td></tr>
+    html += `<tr class="total-row"><td colspan="2">小计</td><td class="num">${w.totalQty}</td><td></td><td class="num">¥${w.totalValue.toFixed(2)}</td></tr>
     </table>`
     grandTotalQty += w.totalQty
     grandTotalValue += w.totalValue
   })
   html += `<table>
-    <tr class="total-row" style="background:#2E7D32;color:#fff"><td>总计（${weeks.length} 周）</td><td class="num">${grandTotalQty}</td><td class="num">¥${grandTotalValue.toFixed(2)}</td><td></td></tr>
+    <tr class="total-row" style="background:#2E7D32;color:#fff"><td colspan="2">总计（${weeks.length} 周）</td><td class="num">${grandTotalQty}</td><td></td><td class="num">¥${grandTotalValue.toFixed(2)}</td></tr>
   </table>
   <div style="text-align:center;margin-top:20px">
     <button onclick="window.print()" style="padding:10px 24px;background:#2E7D32;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">🖨️ 打印报表</button>
