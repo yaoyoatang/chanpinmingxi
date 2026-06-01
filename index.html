@@ -1470,8 +1470,31 @@ function useLocalMode() {
     return
   }
 
-  // 完全新用户
-  showToast('📱 首次使用 - 请先注册或用管理员Token登录')
+  // 完全新用户 - 自动创建本地管理员
+  const defaultUser = {
+    id: 'local-admin-' + Date.now(),
+    username: 'admin',
+    name: '本地管理员',
+    password: '',
+    role: 'admin',
+    status: 'active',
+    permissions: {
+      viewBrands: [],
+      hidePrice: false,
+      canEdit: true,
+      canAdd: true,
+      canDelete: true
+    },
+    createdAt: new Date().toISOString()
+  }
+  cached.users = [defaultUser]
+  saveLocalData(cached)
+  state.currentUser = defaultUser
+  state.cloudSync = false
+  goPage('index', false)
+  showSyncStatus('📱 本地模式（离线）')
+  showToast('✅ 已进入本地模式')
+  updateSyncUI()
 }
 
 // ==================== 注册 ====================
