@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>产品明细</title>
+<style>
+/* ===== 全局重置 ===== */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',Arial,sans-serif;background:#f5f6fa;color:#1a1a2e;min-height:100vh}
+button{cursor:pointer;border:none;outline:none;font-family:inherit}
+input,textarea{font-family:inherit;outline:none}
+a{text-decoration:none;color:inherit}
+
+/* ===== 变量 ===== */
+:root{
+  --primary:#185FA5;
+  --primary-light:#e8f0fb;
+  --primary-dark:#0f4280;
+  --success:#07c160;
+  --danger:#fa5151;
+  --warning:#ff8800;
+  --text-main:#1a1a2e;
+  --text-sub:#888;
+  --bg:#f5f6fa;
+  --card:#fff;
+  --border:#eaedf3;
+  --radius:14px;
+  --shadow:0 2px 16px rgba(24,95,165,0.08);
+}
+
+/* ===== 通用 ===== */
+.hidden{display:none!important}
+.page{display:none;min-height:100vh}
+.page.active{display:block}
+
+/* ===== 加载指示器 ===== */
+.loading-overlay{
+  position:fixed;inset:0;background:rgba(255,255,255,.85);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:9999;
+}
+.loading-overlay.hidden{display:none}
+.spinner{
+  width:40px;height:40px;border:3px solid var(--border);
+  border-top-color:var(--primary);border-radius:50%;
+  animation:spin .6s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{margin-top:12px;color:var(--text-sub);font-size:14px}
+
+/* ===== 顶部导航 ===== */
+.navbar{
+  background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;height:56px;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 8px rgba(24,95,165,0.25);
+}
+.navbar-title{font-size:17px;font-weight:600;letter-spacing:.5px}
+.navbar-back{font-size:22px;padding:8px;margin-left:-8px;color:#fff;opacity:.9}
+.navbar-action{font-size:14px;padding:6px 12px;background:rgba(255,255,255,0.15);border-radius:20px;color:#fff}
+
+/* ===== 底部标签栏 ===== */
+.tabbar{
+  position:fixed;bottom:0;left:0;right:0;background:#fff;
+  display:flex;border-top:1px solid var(--border);z-index:100;
+  padding-bottom:env(safe-area-inset-bottom);
+  box-shadow:0 -2px 12px rgba(0,0,0,0.06);
+}
+.tab-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8px 0 6px;gap:3px;color:var(--text-sub);font-size:11px;transition:color .2s;
+}
+.tab-item.active{color:var(--primary)}
+.tab-icon{font-size:22px;line-height:1}
+
+/* ===== 登录页（GitHub Token） ===== */
+#page-login{
+  background:linear-gradient(145deg,#185FA5 0%,#0e3d7a 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:32px 24px;
+}
+.login-logo{font-size:64px;margin-bottom:12px;text-align:center}
+.login-title{color:#fff;font-size:24px;font-weight:700;margin-bottom:6px;text-align:center}
+.login-sub{color:rgba(255,255,255,.6);font-size:14px;margin-bottom:36px;text-align:center}
+.login-card{
+  background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:380px;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+}
+.login-card-title{font-size:16px;font-weight:600;color:var(--text-main);margin-bottom:18px;text-align:center}
+.login-card-title-small{font-size:13px;color:var(--text-sub);margin-bottom:16px;text-align:center;line-height:1.5}
+.login-input{
+  width:100%;padding:13px 16px;border:2px solid var(--border);border-radius:12px;
+  font-size:15px;margin-bottom:14px;transition:border-color .2s;
+}
+.login-input:focus{border-color:var(--primary)}
+.login-input-token{font-size:13px;font-family:'Courier New',monospace;letter-spacing:.5px}
+.login-btn{
+  width:100%;padding:14px;background:linear-gradient(135deg,#185FA5,#0e3d7a);
+  color:#fff;border-radius:12px;font-size:16px;font-weight:600;
+  box-shadow:0 4px 16px rgba(24,95,165,.4);transition:transform .15s,box-shadow .15s;
+}
+.login-btn:active{transform:scale(.97)}
+.login-hint{color:var(--text-sub);font-size:12px;text-align:center;margin-top:14px;line-height:1.6}
+.login-hint a{color:var(--primary)}
+.login-err{color:var(--danger);font-size:13px;text-align:center;margin-top:10px;display:none}
+.login-steps{text-align:left;font-size:12px;color:var(--text-sub);background:var(--bg);padding:12px 14px;border-radius:10px;margin-bottom:16px;line-height:1.8}
+.login-steps b{color:var(--text-main)}
+
+/* ===== 产品列表页 ===== */
+#page-index{padding-bottom:70px}
+.search-bar-wrap{padding:12px 16px;background:#fff;border-bottom:1px solid var(--border)}
+.search-bar{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg);border-radius:24px;padding:9px 14px;border:1.5px solid var(--border);
+}
+.search-bar input{flex:1;border:none;background:transparent;font-size:14px;color:var(--text-main)}
+.search-bar input::placeholder{color:#bbb}
+.search-icon{color:#bbb;font-size:16px}
+
+.brand-tabs{
+  display:flex;gap:8px;padding:10px 16px;overflow-x:auto;white-space:nowrap;background:#fff;
+  border-bottom:1px solid var(--border);
+}
+.brand-tabs::-webkit-scrollbar{display:none}
+.brand-tab{
+  padding:5px 14px;border-radius:20px;font-size:13px;
+  background:var(--bg);color:var(--text-sub);border:1.5px solid var(--border);
+  transition:all .2s;flex-shrink:0;cursor:pointer;
+}
+.brand-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+.product-list{padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+.product-card{
+  background:#fff;border-radius:16px;padding:14px 16px;
+  box-shadow:var(--shadow);border:1px solid var(--border);
+  display:flex;flex-direction:column;gap:6px;
+  cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;
+}
+.product-card:active{transform:scale(.98);box-shadow:0 1px 8px rgba(24,95,165,.1)}
+.product-card-header{display:flex;align-items:center;justify-content:space-between}
+.product-model{font-size:16px;font-weight:600;color:var(--text-main);flex:1;margin-right:8px}
+.product-brand{font-size:12px;padding:2px 10px;background:var(--primary-light);color:var(--primary);border-radius:20px;white-space:nowrap}
+.product-qty{font-size:13px;color:var(--text-sub);display:flex;align-items:center;gap:4px}
+.qty-num{font-weight:700;font-size:15px;color:var(--text-main)}
+.product-price-row{display:flex;gap:12px;flex-wrap:wrap}
+.price-item{display:flex;flex-direction:column;gap:1px}
+.price-label{font-size:11px;color:var(--text-sub)}
+.price-value{font-size:15px;font-weight:600}
+.price-value.primary{color:var(--primary)}
+.price-value.success{color:var(--success)}
+.price-value.warning{color:var(--warning)}
+.sold-badge{
+  position:absolute;right:14px;top:14px;
+  background:#fff0e0;color:var(--warning);font-size:11px;padding:2px 8px;border-radius:10px;
+  border:1px solid #ffd699;
+}
+
+.fab-btn{
+  position:fixed;right:20px;bottom:80px;width:54px;height:54px;border-radius:27px;
+  background:linear-gradient(135deg,#185FA5,#0e3d7a);color:#fff;font-size:28px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 20px rgba(24,95,165,.45);z-index:90;transition:transform .15s;
+}
+.fab-btn:active{transform:scale(.92)}
+
+.empty-tip{text-align:center;padding:60px 20px;color:var(--text-sub)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-text{font-size:15px}
+
+/* ===== 产品详情页 ===== */
+#page-detail{padding-bottom:80px}
+.detail-header{background:#fff;padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.detail-model{font-size:22px;font-weight:700;color:var(--text-main);margin-bottom:6px}
+.detail-brand-tag{display:inline-block;font-size:13px;padding:3px 12px;background:var(--primary-light);color:var(--primary);border-radius:20px}
+.detail-price-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--border);margin:0 16px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);
+}
+.price-cell{background:#fff;padding:14px 8px;text-align:center}
+.price-cell-label{font-size:11px;color:var(--text-sub);margin-bottom:4px}
+.price-cell-value{font-size:18px;font-weight:700}
+.price-cell-value.blue{color:var(--primary)}
+.price-cell-value.green{color:var(--success)}
+.price-cell-value.orange{color:var(--warning)}
+.price-cell-value.gray{color:#bbb;font-size:13px;font-weight:400}
+
+.section{background:#fff;border-radius:16px;margin:12px 16px;padding:16px;box-shadow:var(--shadow)}
+.section-title{font-size:14px;font-weight:600;color:var(--primary);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.section-title::before{content:'';display:block;width:3px;height:14px;background:var(--primary);border-radius:2px}
+.feature-tags{display:flex;flex-wrap:wrap;gap:6px}
+.feature-tag{padding:4px 12px;background:var(--bg);border-radius:20px;font-size:13px;color:var(--text-sub);border:1px solid var(--border)}
+
+.img-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.img-scroll::-webkit-scrollbar{display:none}
+.img-thumb{
+  width:80px;height:80px;border-radius:10px;object-fit:cover;flex-shrink:0;
+  border:1.5px solid var(--border);cursor:pointer;
+}
+
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bg)}
+.info-row:last-child{border-bottom:none}
+.info-key{font-size:13px;color:var(--text-sub)}
+.info-val{font-size:14px;font-weight:500;color:var(--text-main)}
+
+.detail-actions{
+  position:fixed;bottom:0;left:0;right:0;background:#fff;padding:12px 16px;
+  border-top:1px solid var(--border);display:flex;gap:10px;
+  padding-bottom:calc(12px + env(safe-area-inset-bottom));
+}
+.btn{padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;transition:all .15s;flex:1}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:linear-gradient(135deg,#185FA5,#0e3d7a);color:#fff;box-shadow:0 3px 12px rgba(24,95,165,.35)}
+.btn-success{background:linear-gradient(135deg,#07c160,#059948);color:#fff;box-shadow:0 3px 12px rgba(7,193,96,.35)}
+.btn-danger{background:linear-gradient(135deg,#fa5151,#d63030);color:#fff;box-shadow:0 3px 12px rgba(250,81,81,.35)}
+.btn-ghost{background:#f5f6fa;color:var(--text-main);border:1.5px solid var(--border)}
+
+/* ===== 添加/编辑产品页 ===== */
+#page-add{padding-bottom:80px}
+.form-wrap{padding:16px}
+.form-section{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.form-section-title{font-size:13px;font-weight:600;color:var(--primary);margin-bottom:14px;letter-spacing:.5px}
+.form-row{margin-bottom:14px}
+.form-row:last-child{margin-bottom:0}
+.form-label{font-size:13px;color:var(--text-sub);margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.form-label .required{color:var(--danger)}
+.form-input{
+  width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;
+  font-size:15px;color:var(--text-main);background:#fff;transition:border-color .2s;
+}
+.form-input:focus{border-color:var(--primary)}
+.form-input::placeholder{color:#ccc}
+.stepper-row{display:flex;align-items:center;gap:10px}
+.stepper-row .stepper-btn{width:36px;height:36px;flex-shrink:0}
+.stepper-row .form-input{text-align:center;flex:1}
+
+.profit-preview{
+  background:linear-gradient(135deg,#e8f5e9,#f0faf0);border-radius:10px;padding:12px 14px;
+  display:flex;justify-content:space-between;align-items:center;border:1px solid #b2dfdb;margin-top:6px;
+}
+.profit-preview-label{font-size:13px;color:var(--success)}
+.profit-preview-value{font-size:18px;font-weight:700;color:var(--success)}
+
+.history-brands{margin-top:10px}
+.history-title{font-size:12px;color:var(--text-sub);margin-bottom:6px;display:block}
+.history-tags{display:flex;flex-wrap:wrap;gap:6px}
+.history-tag{
+  padding:4px 12px;border-radius:20px;font-size:13px;
+  background:var(--bg);color:var(--primary);border:1.5px solid var(--primary-light);
+  cursor:pointer;transition:all .15s;
+}
+.history-tag:active{background:var(--primary);color:#fff}
+
+.img-upload-area{display:flex;flex-wrap:wrap;gap:8px}
+.img-upload-item{position:relative;width:80px;height:80px}
+.img-upload-item img{width:100%;height:100%;object-fit:cover;border-radius:10px;border:1.5px solid var(--border)}
+.img-delete{
+  position:absolute;top:-6px;right:-6px;width:20px;height:20px;background:var(--danger);color:#fff;
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:14px;cursor:pointer;
+}
+.img-add-btn{
+  width:80px;height:80px;border-radius:10px;border:1.5px dashed var(--border);
+  background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;font-size:11px;color:#bbb;cursor:pointer;
+}
+.img-add-btn .icon{font-size:22px}
+
+.form-submit-area{padding:0 16px 16px}
+.btn-submit{
+  width:100%;padding:14px;border-radius:14px;
+  background:linear-gradient(135deg,#185FA5,#0e3d7a);color:#fff;font-size:16px;font-weight:600;
+  box-shadow:0 4px 16px rgba(24,95,165,.4);transition:transform .15s;
+}
+.btn-submit:active{transform:scale(.97)}
+.btn-submit:disabled{opacity:.6}
+
+/* ===== 管理页 ===== */
+#page-manage{padding-bottom:80px}
+.manage-section{background:#fff;border-radius:16px;padding:16px;margin:12px 16px;box-shadow:var(--shadow)}
+.manage-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-bottom:1px solid var(--bg);
+}
+.manage-row:last-child{border-bottom:none}
+.manage-row-label{font-size:14px;color:var(--text-main);font-weight:500}
+.manage-row-sub{font-size:12px;color:var(--text-sub);margin-top:2px}
+.toggle{position:relative;width:48px;height:28px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{
+  position:absolute;inset:0;background:#ddd;border-radius:14px;transition:.3s;cursor:pointer;
+}
+.toggle-slider::before{
+  content:'';position:absolute;width:22px;height:22px;background:#fff;border-radius:11px;
+  bottom:3px;left:3px;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2);
+}
+.toggle input:checked + .toggle-slider{background:var(--primary)}
+.toggle input:checked + .toggle-slider::before{transform:translateX(20px)}
+
+.code-display{font-size:22px;font-weight:700;color:var(--primary);letter-spacing:4px;padding:8px 0}
+
+/* ===== 弹窗 ===== */
+.modal-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  display:flex;align-items:flex-end;justify-content:center;z-index:200;
+  opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.modal-mask.show{opacity:1;pointer-events:all}
+.modal-box{
+  background:#fff;border-radius:20px 20px 0 0;padding:24px 20px;
+  width:100%;max-width:480px;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+.modal-mask.show .modal-box{transform:translateY(0)}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:16px;color:var(--text-main)}
+.modal-stock{
+  background:var(--primary-light);border-radius:12px;padding:14px 16px;margin-bottom:16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.modal-stock-label{font-size:14px;color:var(--text-sub)}
+.modal-stock-num{font-size:32px;font-weight:800;color:var(--primary)}
+.modal-stock-unit{font-size:14px;color:var(--text-sub)}
+.modal-input{
+  width:100%;padding:13px 16px;border:2px solid var(--border);border-radius:12px;
+  font-size:16px;margin-bottom:12px;transition:border-color .2s;
+}
+.modal-input:focus{border-color:var(--primary)}
+.modal-btns{display:flex;gap:10px}
+.modal-btns .btn{flex:1}
+
+/* ===== 图片查看器 ===== */
+.img-viewer{
+  position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:300;
+  display:flex;align-items:center;justify-content:center;
+}
+.img-viewer img{max-width:100%;max-height:100%;object-fit:contain}
+.img-viewer-close{
+  position:absolute;top:16px;right:16px;color:#fff;font-size:28px;cursor:pointer;
+  background:rgba(255,255,255,.1);border-radius:50%;
+  width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+}
+
+/* ===== Toast ===== */
+.toast{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(0,0,0,.75);color:#fff;padding:10px 20px;border-radius:10px;
+  font-size:14px;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;
+}
+.toast.show{opacity:1}
+
+/* ===== 同步状态 ===== */
+.sync-status{
+  position:fixed;top:60px;left:50%;transform:translateX(-50%);
+  background:rgba(24,95,165,.9);color:#fff;padding:6px 16px;border-radius:20px;
+  font-size:12px;z-index:150;opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.sync-status.show{opacity:1}
+
+/* ===== 响应式（桌面端） ===== */
+@media(min-width:600px){
+  body{display:flex;justify-content:center;background:#e8ecf0}
+  .app-container{width:390px;min-height:100vh;position:relative;background:#f5f6fa;box-shadow:0 0 40px rgba(0,0,0,.2)}
+  .tabbar{width:390px;left:50%;transform:translateX(-50%)}
+  .fab-btn{right:calc(50% - 195px + 20px)}
+  .detail-actions{width:390px;left:50%;transform:translateX(-50%)}
+  .form-submit-area{position:sticky}
+  .modal-mask{align-items:center}
+  .modal-box{border-radius:20px;margin:0 16px;max-width:358px}
+  .sync-status{left:calc(50% + 195px);transform:translateX(-100%);top:70px}
+}
+</style>
+</head>
+<body>
+<div class="app-container">
+
+<!-- 加载遮罩 -->
+<div class="loading-overlay hidden" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">加载中…</div>
+</div>
+
+<!-- 同步状态 -->
+<div class="sync-status" id="syncStatus">同步中…</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- 图片查看器 -->
+<div class="img-viewer hidden" id="imgViewer">
+  <div class="img-viewer-close" onclick="closeImgViewer()">✕</div>
+  <img id="imgViewerSrc" src="" alt="">
+</div>
+
+<!-- 标记卖出弹窗 -->
+<div class="modal-mask" id="soldModal">
+  <div class="modal-box">
+    <div class="modal-title">📦 标记卖出</div>
+    <div class="modal-stock">
+      <span class="modal-stock-label">当前库存</span>
+      <span class="modal-stock-num" id="soldModalStock">0</span>
+      <span class="modal-stock-unit">件</span>
+    </div>
+    <input class="modal-input" type="number" id="soldQtyInput" placeholder="卖出数量" min="1">
+    <input class="modal-input" type="digit" id="soldPriceInput" placeholder="卖价（选填，卖出时填写）">
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeSoldModal()">取消</button>
+      <button class="btn btn-success" onclick="confirmSold()">确定卖出</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 登录页（GitHub Token） ===== -->
+<div id="page-login" class="page active">
+  <div style="font-size:64px;margin-bottom:12px;text-align:center">🛍️</div>
+  <div class="login-title" style="text-align:center;color:#fff">产品明细</div>
+  <div class="login-sub" style="text-align:center;color:rgba(255,255,255,.6)">数据通过云端同步 · 多设备安全访问</div>
+  <div class="login-card">
+    <div class="login-card-title">选择使用方式</div>
+    <button class="login-btn" onclick="useLocalMode()" id="localBtn" style="background:#07c160;margin-bottom:12px">📱 本地使用（推荐）</button>
+    <div style="text-align:center;color:#888;font-size:12px;margin-bottom:14px">数据存于本设备 · 无需注册 · 即点即用</div>
+
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <div class="login-card-title" style="font-size:13px">☁️ 云端同步（可选）</div>
+      <div class="login-steps" id="loginSteps">
+        <b>第1步：</b>打开 <a href="https://github.com/settings/tokens/new?scopes=repo&description=产品明细" target="_blank">GitHub Token 创建页面</a><br>
+        <b>第2步：</b>填写描述「产品明细」，勾选 <b>repo</b> 权限<br>
+        <b>第3步：</b>点生成令牌(Genrate token)，复制下面的字符串<br>
+        <b>第4步：</b>粘贴到下方输入框即可
+      </div>
+      <input class="login-input login-input-token" type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" maxlength="250">
+      <button class="login-btn" onclick="doLogin()" id="loginBtn">连接 GitHub</button>
+      <div class="login-err" id="loginErr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 产品列表页 ===== -->
+<div id="page-index" class="page">
+  <nav class="navbar">
+    <span class="navbar-title">产品明细</span>
+    <span class="navbar-action" onclick="goPage('manage')">⚙️ 管理</span>
+  </nav>
+  <div class="search-bar-wrap">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input id="searchInput" placeholder="搜索型号、品牌…" oninput="onSearch(this.value)">
+      <span id="searchClear" onclick="clearSearch()" style="color:#bbb;cursor:pointer;display:none">✕</span>
+    </div>
+  </div>
+  <div class="brand-tabs" id="brandTabs"></div>
+  <div class="product-list" id="productList"></div>
+  <div class="fab-btn" onclick="goPage('add')" title="添加产品">＋</div>
+</div>
+
+<!-- ===== 产品详情页 ===== -->
+<div id="page-detail" class="page">
+  <nav class="navbar">
+    <span class="navbar-back" onclick="goBack()">‹</span>
+    <span class="navbar-title">产品详情</span>
+    <span class="navbar-action" id="detailEditBtn" onclick="goEditProduct()">编辑</span>
+  </nav>
+  <div id="detailContent"></div>
+  <div class="detail-actions" id="detailActions"></div>
+</div>
+
+<!-- ===== 添加/编辑产品页 ===== -->
+<div id="page-add" class="page">
+  <nav class="navbar">
+    <span class="navbar-back" onclick="goBack()">‹</span>
+    <span class="navbar-title" id="addPageTitle">添加产品</span>
+  </nav>
+  <div class="form-wrap">
+    <div class="form-section">
+      <div class="form-section-title">基本信息</div>
+      <div class="form-row">
+        <div class="form-label">品牌</div>
+        <input class="form-input" id="fieldBrand" placeholder="品牌名称（可选）">
+        <div class="history-brands" id="historyBrandsWrap">
+          <span class="history-title">历史品牌：</span>
+          <div class="history-tags" id="historyBrandTags"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-label"><span class="required">*</span>型号/名称</div>
+        <input class="form-input" id="fieldModel" placeholder="如：iPhone 15 Pro 256G">
+      </div>
+      <div class="form-row">
+        <div class="form-label">特性标签</div>
+        <input class="form-input" id="fieldFeatures" placeholder="用逗号分隔，如：全新未拆,128G,黑色">
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">价格信息</div>
+      <div class="form-row">
+        <div class="form-label"><span class="required">*</span>进价（元）</div>
+        <input class="form-input" id="fieldPrice" type="number" placeholder="0.00" step="0.01" oninput="calcProfit()">
+      </div>
+      <div class="form-row">
+        <div class="form-label">卖价（元）</div>
+        <input class="form-input" id="fieldSell" type="number" placeholder="可留空，卖出时填写" step="0.01" oninput="calcProfit()">
+      </div>
+      <div class="profit-preview" id="profitPreview" style="display:none">
+        <span class="profit-preview-label">预计利润</span>
+        <span class="profit-preview-value" id="profitPreviewVal">¥0</span>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">库存数量</div>
+      <div class="form-row">
+        <div class="stepper-row">
+          <button class="stepper-btn" onclick="changeQty(-1)">−</button>
+          <input class="form-input" id="fieldQty" type="number" value="1" min="0" style="text-align:center">
+          <button class="stepper-btn" onclick="changeQty(1)">＋</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">产品图片（最多5张）</div>
+      <div class="img-upload-area" id="uploadArea"></div>
+    </div>
+  </div>
+  <div class="form-submit-area">
+    <button class="btn-submit" id="submitBtn" onclick="submitForm()">保存产品</button>
+  </div>
+</div>
+
+<!-- ===== 管理页 ===== -->
+<div id="page-manage" class="page">
+  <nav class="navbar">
+    <span class="navbar-back" onclick="goBack()">‹</span>
+    <span class="navbar-title">管理中心</span>
+  </nav>
+  <div class="manage-section" style="margin-top:16px">
+    <div style="font-size:14px;font-weight:600;color:var(--text-sub);margin-bottom:12px">访问密码</div>
+    <div class="form-row">
+      <div class="form-label">访问密码（可选，不填则无密码保护）</div>
+      <input class="form-input" id="mgUserCode" placeholder="留空表示不需要密码">
+    </div>
+  </div>
+  <div class="manage-section">
+    <div style="font-size:14px;font-weight:600;color:var(--text-sub);margin-bottom:12px">显示设置</div>
+    <div class="manage-row">
+      <div><div class="manage-row-label">隐藏价格和利润</div><div class="manage-row-sub">开启后列表只显示基本信息</div></div>
+      <label class="toggle"><input type="checkbox" id="permHidePrice"><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+  <div class="manage-section">
+    <div style="font-size:14px;font-weight:600;color:var(--text-sub);margin-bottom:12px">数据管理</div>
+    <div class="manage-row">
+      <div><div class="manage-row-label">导出全部数据</div></div>
+      <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="exportData()">下载JSON</button>
+    </div>
+    <div class="manage-row">
+      <div><div class="manage-row-label">导入数据</div></div>
+      <button class="btn btn-ghost" style="padding:8px 16px;font-size:13px" onclick="document.getElementById('importFile').click()">选择文件</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </div>
+  <div style="padding:0 16px">
+    <button class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="saveManageConfig()">保存设置</button>
+    <button class="btn btn-danger" style="width:100%" onclick="doLogout()">退出登录</button>
+  </div>
+</div>
+
+<!-- 底部标签栏 -->
+<div class="tabbar" id="tabbar" style="display:none">
+  <div class="tab-item active" id="tab-index" onclick="goPage('index')">
+    <span class="tab-icon">📋</span>
+    <span>产品列表</span>
+  </div>
+  <div class="tab-item" id="tab-add" onclick="goPage('add')">
+    <span class="tab-icon">➕</span>
+    <span>添加产品</span>
+  </div>
+</div>
+
+</div><!-- end app-container -->
+
+<script>
+// ==================== 配置 ====================
+const CONFIG = {
+  // GitHub 用户名（替换成你的）
+  owner: 'yaoyoatang',
+  // 存放数据的私有仓库名（首次自动创建）
+  repo: 'product-data',
+  // 数据文件路径
+  dataPath: 'data.json',
+}
+
+// ==================== 全局状态 ====================
+const state = {
+  currentPage: 'login',
+  pageStack: [],
+  token: '',          // GitHub PAT
+  products: [],
+  brands: [],
+  config: {},
+  currentFilter: '全部',
+  searchKeyword: '',
+  currentProduct: null,
+  editProductId: null,
+  uploadImages: [],
+  soldProductId: null,
+  dataSha: '',        // GitHub 文件的 SHA（更新时需要）
+}
+
+// ==================== 工具函数 ====================
+function showToast(msg, duration = 2000) {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.classList.add('show')
+  setTimeout(() => t.classList.remove('show'), duration)
+}
+
+function showSyncStatus(text, duration = 1500) {
+  const el = document.getElementById('syncStatus')
+  el.textContent = text
+  el.classList.add('show')
+  setTimeout(() => el.classList.remove('show'), duration)
+}
+
+function fmtMoney(v) {
+  if (v === undefined || v === null || v === '') return '—'
+  const n = parseFloat(v)
+  if (isNaN(n) || n === 0) return '—'
+  return '¥' + n.toFixed(2)
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 6)
+}
+
+function showLoading(text = '加载中…') {
+  document.getElementById('loadingText').textContent = text
+  document.getElementById('loadingOverlay').classList.remove('hidden')
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.add('hidden')
+}
+
+// ==================== GitHub API 核心层 ====================
+// 使用免费公共 CORS 代理访问 GitHub API（解决跨域和国内网络问题）
+const GH_API = 'https://corsproxy.io/?' + encodeURIComponent('https://api.github.com')
+
+async function ghFetch(path, options = {}) {
+  // corsproxy格式: https://corsproxy.io/?<encoded_url>
+  const url = `${GH_API}${path}`
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'Authorization': `Bearer ${state.token}`,
+    ...options.headers,
+  }
+  console.log('[ghFetch] 请求:', url)
+  const res = await fetch(url, { ...options, headers })
+
+  if (res.status === 401) throw new Error('Token无效或已过期')
+  if (res.status === 403) {
+    const json = await res.json().catch(() => ({}))
+    if (json.message && json.message.includes('API rate limit')) {
+      throw new Error('请求太频繁，请稍后再试')
+    }
+    throw new Error('权限不足，请确认Token有repo权限')
+  }
+  if (res.status === 404) return null
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(json.message || `请求失败 (${res.status})`)
+  }
+
+  // 返回带SHA的信息（用于后续更新）
+  const result = await res.json()
+  if (result.sha) state.dataSha = result.sha
+  return result
+}
+
+// 从 GitHub 读取数据文件
+async function ghReadData() {
+  try {
+    const result = await ghFetch(`/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}`)
+    if (!result) return { products: [], config: {} }
+
+    // GitHub API返回的是base64编码内容
+    const decoded = atob(result.content)
+    const data = JSON.parse(decoded)
+    state.dataSha = result.sha
+    return data
+  } catch (err) {
+    if (err.message.includes('Not Found') || err.message === 'null') {
+      // 数据文件不存在，返回空数据
+      return { products: [], config: {} }
+    }
+    throw err
+  }
+}
+
+// 将数据写入 GitHub
+async function ghWriteData(data) {
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))))
+  const body = {
+    message: `update data ${new Date().toLocaleString()}`,
+    content: content,
+  }
+  if (state.dataSha) body.sha = state.dataSha
+
+  const result = await ghFetch(`/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  state.dataSha = result.content.sha
+  return result
+}
+
+// 创建私有仓库（首次使用时）
+async function ghCreateRepo() {
+  await ghFetch('/user/repos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: CONFIG.repo,
+      description: '产品明细 - 数据存储',
+      private: true,
+      has_issues: false,
+      has_projects: false,
+      has_wiki: false,
+    }),
+  })
+}
+
+// ==================== 数据操作层（带本地缓存+防冲突） ====================
+let localCache = null  // 内存中的数据缓存
+
+function getLocalData() {
+  if (!localCache) {
+    try { localCache = JSON.parse(localStorage.getItem('pm_cache') || '{"products":[],"config":{}}') } catch(e) { localCache = { products:[], config:{} } }
+  }
+  return localCache
+}
+
+function saveLocalCache(data) {
+  localCache = data
+  try { localStorage.setItem('pm_cache', JSON.stringify(data)) } catch(e) {}
+}
+
+// 从云端拉取最新数据
+async function pullData(showLoadingFlag = true) {
+  // 本地模式：直接从缓存读取
+  if (!state.token || state.cloudSync === false) {
+    const cached = getLocalData()
+    state.products = cached.products || []
+    state.config = cached.config || {}
+    return true
+  }
+  if (showLoadingFlag) showLoading('正在同步数据…')
+  try {
+    const data = await ghReadData()
+    saveLocalCache(data)
+    state.products = data.products || []
+    state.config = data.config || {}
+    if (showLoadingFlag) hideLoading()
+    return true
+  } catch (err) {
+    if (showLoadingFlag) hideLoading()
+    // 网络错误时使用本地缓存
+    const cached = getLocalData()
+    state.products = cached.products || []
+    state.config = cached.config || {}
+    showToast('⚠️ 使用离线数据：' + err.message)
+    return false
+  }
+}
+
+// 推送数据到云端
+async function pushData() {
+  // 本地模式：只保存到浏览器
+  if (!state.token || state.cloudSync === false) {
+    saveLocalCache({ products: state.products, config: state.config })
+    showSyncStatus('💾 已保存')
+    return true
+  }
+  showSyncStatus('正在保存…')
+  try {
+    const data = { products: state.products, config: state.config }
+    await ghWriteData(data)
+    saveLocalCache(data)
+    showSyncStatus('✅ 已同步')
+    return true
+  } catch (err) {
+    // 保存到本地，稍后重试
+    saveLocalCache({ products: state.products, config: state.config })
+    showSyncStatus('❌ 已保存到本地')
+    showToast('网络异常，数据已保存在浏览器本地')
+    return false
+  }
+}
+
+// ==================== 路由 ====================
+function goPage(name, pushStack = true) {
+  if (pushStack && state.currentPage !== name) {
+    state.pageStack.push(state.currentPage)
+  }
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+  document.getElementById('page-' + name).classList.add('active')
+  state.currentPage = name
+
+  const tabbar = document.getElementById('tabbar')
+  if (['index', 'add'].includes(name)) {
+    tabbar.style.display = 'flex'
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'))
+    const activeTab = document.getElementById('tab-' + name)
+    if (activeTab) activeTab.classList.add('active')
+  } else {
+    tabbar.style.display = 'none'
+  }
+
+  if (name === 'index') renderProductList()
+  if (name === 'add') initAddPage()
+  if (name === 'manage') loadManageConfig()
+}
+
+function goBack() {
+  const prev = state.pageStack.pop()
+  if (prev) goPage(prev, false)
+  else goPage('index', false)
+}
+
+// ==================== 登录 ====================
+function useLocalMode() {
+  // 直接用本地存储，不需要任何Token
+  state.token = ''
+  state.cloudSync = false  // 标记为本地模式
+  const cached = localStorage.getItem('pm_cache')
+  if (cached) {
+    try {
+      localCache = JSON.parse(cached)
+      state.products = localCache.products || []
+      state.config = localCache.config || {}
+    } catch(e) {
+      state.products = []
+      state.config = {}
+      localCache = { products: [], config: {} }
+    }
+  } else {
+    state.products = []
+    state.config = {}
+    localCache = { products: [], config: {} }
+  }
+  goPage('index', false)
+  showToast('✅ 本地模式已启动')
+}
+
+async function doLogin() {
+  const token = document.getElementById('tokenInput').value.trim()
+  if (!token) { showToast('请输入Token'); return }
+
+  const btn = document.getElementById('loginBtn')
+  const errEl = document.getElementById('loginErr')
+
+  btn.disabled = true
+  btn.textContent = '连接中…'
+  errEl.style.display = 'none'
+
+  state.token = token
+
+  try {
+    // 1. 验证Token是否有效（通过corsproxy代理）
+    showLoading('验证Token…')
+    const user = await ghFetch('/user')
+    hideLoading()
+
+    if (!user || !user.login) throw new Error('Token无效')
+
+    // 2. 尝试读取或创建仓库
+    showLoading('检查数据仓库…')
+    let data = await ghReadData()
+
+    if (data === null) {
+      // 仓库不存在，创建它
+      hideLoading()
+      if (confirm('检测到这是首次使用。\n\n点击「确定」将自动创建一个名为「' + CONFIG.repo + '」的私有仓库来存放你的数据。')) {
+        showLoading('创建数据仓库…')
+        await ghCreateRepo()
+        // 写入初始数据
+        await ghWriteData({ products: [], config: { password: '' } })
+        data = { products: [], config: { password: '' } }
+        hideLoading()
+        showToast('✅ 仓库创建成功！')
+      } else {
+        btn.disabled = false
+        btn.textContent = '连接 GitHub'
+        return
+      }
+    } else {
+      hideLoading()
+    }
+
+    // 3. 保存Token到localStorage（方便下次自动登录）
+    try { localStorage.setItem('pm_token', token) } catch(e) {}
+
+    // 4. 加载数据并进入主页
+    localCache = data
+    state.products = data.products || []
+    state.config = data.config || {}
+
+    // 5. 密码检查
+    const needPwd = state.config.password && state.config.password.length > 0
+    if (needPwd) {
+      const pwd = prompt('请输入访问密码：')
+      if (pwd !== state.config.password) {
+        showToast('密码错误')
+        btn.disabled = false
+        btn.textContent = '连接 GitHub'
+        return
+      }
+    }
+
+    state.cloudSync = true
+    goPage('index', false)
+    showSyncStatus(`✅ 已连接 @${user.login}`)
+
+  } catch (err) {
+    hideLoading()
+    errEl.textContent = err.message || '连接失败'
+    errEl.style.display = 'block'
+    btn.disabled = false
+    btn.textContent = '连接 GitHub'
+  }
+}
+
+// 自动登录（如果有缓存的Token）
+async function autoLogin() {
+  const cachedToken = localStorage.getItem('pm_token')
+  if (!cachedToken) return
+
+  document.getElementById('tokenInput').value = cachedToken
+  state.token = cachedToken
+
+  try {
+    const data = await ghReadData()
+    if (data) {
+      localCache = data
+      state.products = data.products || []
+      state.config = data.config || {}
+
+      // 密码检查
+      const needPwd = state.config.password && state.config.password.length > 0
+      if (needPwd) {
+        // 不在自动登录时弹密码框，让用户手动点登录
+        return
+      }
+
+      state.cloudSync = true
+      goPage('index', false)
+      showSyncStatus('✅ 已自动连接')
+    }
+  } catch (e) {
+    // Token过期了，清除
+    localStorage.removeItem('pm_token')
+  }
+}
+
+function doLogout() {
+  if (!confirm('确定要退出登录吗？')) return
+  localStorage.removeItem('pm_token')
+  localStorage.removeItem('pm_cache')
+  state.token = ''
+  state.products = []
+  state.config = {}
+  state.pageStack = []
+  state.dataSha = ''
+  localCache = null
+  document.getElementById('tokenInput').value = ''
+  document.getElementById('loginErr').style.display = 'none'
+  goPage('login', false)
+}
+
+// ==================== 产品列表 ====================
+function loadProducts() {
+  // 先刷新数据
+  pullData(false).then(() => renderProductList())
+}
+
+function getBrands() {
+  const set = new Set()
+  state.products.forEach(p => { if (p.brand) set.add(p.brand) })
+  return Array.from(set).sort()
+}
+
+function renderBrandTabs() {
+  const tabs = ['全部', ...getBrands()]
+  const container = document.getElementById('brandTabs')
+  container.innerHTML = tabs.map(b =>
+    `<div class="brand-tab ${b === state.currentFilter ? 'active' : ''}" onclick="filterBrand('${b}')">${b}</div>`
+  ).join('')
+}
+
+function filterBrand(brand) {
+  state.currentFilter = brand
+  renderBrandTabs()
+  renderProductList()
+}
+
+function onSearch(val) {
+  state.searchKeyword = val
+  document.getElementById('searchClear').style.display = val ? '' : 'none'
+  clearTimeout(state._searchTimer)
+  state._searchTimer = setTimeout(renderProductList, 200)
+}
+
+function clearSearch() {
+  state.searchKeyword = ''
+  document.getElementById('searchInput').value = ''
+  document.getElementById('searchClear').style.display = 'none'
+  renderProductList()
+}
+
+function getFilteredProducts() {
+  let list = [...state.products]
+  if (state.currentFilter !== '全部') {
+    list = list.filter(p => p.brand === state.currentFilter)
+  }
+  if (state.searchKeyword) {
+    const kw = state.searchKeyword.toLowerCase()
+    list = list.filter(p =>
+      (p.model && p.model.toLowerCase().includes(kw)) ||
+      (p.brand && p.brand.toLowerCase().includes(kw))
+    )
+  }
+  // 最新录入的排前面
+  list.sort((a, b) => (b.create_time || '').localeCompare(a.create_time || ''))
+  return list
+}
+
+function renderProductList() {
+  const list = document.getElementById('productList')
+  const filtered = getFilteredProducts()
+  const hidePrice = state.config.hidePrice
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-tip"><div class="empty-icon">📦</div><div class="empty-text">暂无产品</div></div>`
+    document.getElementById('brandTabs').innerHTML = ''
+    return
+  }
+
+  renderBrandTabs()
+
+  list.innerHTML = filtered.map(p => `
+    <div class="product-card" onclick="goDetail('${p.id}')">
+      <div class="product-card-header">
+        <span class="product-model">${escHtml(p.model)}</span>
+        ${p.brand ? `<span class="product-brand">${escHtml(p.brand)}</span>` : ''}
+        ${(p.quantity||0) <= 0 ? '<span class="sold-badge">已售罄</span>' : ''}
+      </div>
+      <div class="product-qty">库存：<span class="qty-num">${p.quantity || 0}</span> 件${p.sold_count ? `　已售 <span class="qty-num" style="color:var(--warning)">${p.sold_count}</span> 件` : ''}</div>
+      ${!hidePrice ? `
+      <div class="product-price-row">
+        <div class="price-item"><div class="price-label">进价</div><div class="price-value primary">${fmtMoney(p.price)}</div></div>
+        ${p.sell > 0 ? `<div class="price-item"><div class="price-label">卖价</div><div class="price-value success">${fmtMoney(p.sell)}</div></div>` : ''}
+        ${p.profit != null && p.profit !== 0 ? `<div class="price-item"><div class="price-label">利润</div><div class="price-value warning">${fmtMoney(p.profit)}</div></div>` : ''}
+      </div>` : ''}
+    </div>
+  `).join('')
+}
+
+function escHtml(s) {
+  if (!s) return ''
+  const div = document.createElement('div')
+  div.textContent = s
+  return div.innerHTML
+}
+
+// ==================== 产品详情 ====================
+function goDetail(id) {
+  const product = state.products.find(p => p.id === id)
+  if (!product) { showToast('产品不存在'); return }
+  state.currentProduct = product
+  renderDetailPage(product)
+  goPage('detail')
+}
+
+function renderDetailPage(p) {
+  const hidePrice = state.config.hidePrice
+
+  // 价格网格
+  const priceGrid = !hidePrice ? `
+    <div class="detail-price-grid">
+      <div class="price-cell">
+        <div class="price-cell-label">进价</div>
+        <div class="price-cell-value blue">${fmtMoney(p.price)}</div>
+      </div>
+      <div class="price-cell">
+        <div class="price-cell-label">卖价</div>
+        ${p.sell > 0 ? `<div class="price-cell-value green">${fmtMoney(p.sell)}</div>` : `<div class="price-cell-value gray">待填写</div>`}
+      </div>
+      <div class="price-cell">
+        <div class="price-cell-label">利润</div>
+        ${p.profit != null && p.profit !== 0 ? `<div class="price-cell-value orange">${fmtMoney(p.profit)}</div>` : `<div class="price-cell-value gray">—</div>`}
+      </div>
+    </div>` : ''
+
+  // 特性标签
+  const featureTags = (p.features || []).length ? `
+    <div class="section">
+      <div class="section-title">特性标签</div>
+      <div class="feature-tags">${p.features.map(f => `<span class="feature-tag">${escHtml(f)}</span>`).join('')}</div>
+    </div>` : ''
+
+  // 图片（支持base64）
+  const imgSection = (p.images || []).length ? `
+    <div class="section">
+      <div class="section-title">产品图片</div>
+      <div class="img-scroll">${p.images.map((img, i) => `<img class="img-thumb" src="${img.startsWith('data:')?img:img}" onclick="openImgViewer('${img.startsWith('data:')?'_base64_'+i:img}')" data-idx="${i}">`).join('')}</div>
+    </div>` : ''
+
+  // 其他信息
+  const infoSection = `
+    <div class="section">
+      <div class="section-title">库存信息</div>
+      <div class="info-row"><span class="info-key">当前库存</span><span class="info-val">${p.quantity || 0} 件</span></div>
+      <div class="info-row"><span class="info-key">累计已售</span><span class="info-val">${p.sold_count || 0} 件</span></div>
+      <div class="info-row"><span class="info-key">录入时间</span><span class="info-val">${p.create_time ? p.create_time.slice(0, 19) : '—'}</span></div>
+      <div class="info-row"><span class="info-key">最后更新</span><span class="info-val">${p.update_time ? p.update_time.slice(0, 19) : '—'}</span></div>
+    </div>`
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-header" style="padding-bottom:16px">
+      <div class="detail-model">${escHtml(p.model)}</div>
+      ${p.brand ? `<span class="detail-brand-tag">${escHtml(p.brand)}</span>` : ''}
+    </div>
+    ${priceGrid}
+    ${featureTags}
+    ${imgSection}
+    ${infoSection}
+  `
+
+  // 底部按钮
+  const btns = []
+  btns.push(`<button class="btn btn-success" onclick="openSoldModal('${p.id}',${p.quantity||0})">标记卖出</button>`)
+  btns.push(`<button class="btn btn-danger" onclick="deleteProduct('${p.id}')">删除</button>`)
+  document.getElementById('detailActions').innerHTML = btns.join('')
+}
+
+function goEditProduct() {
+  if (!state.currentProduct) return
+  state.editProductId = state.currentProduct.id
+  initAddPage(state.currentProduct)
+  goPage('add')
+}
+
+async function deleteProduct(id) {
+  if (!confirm('确定删除这个产品吗？')) return
+  state.products = state.products.filter(p => p.id !== id)
+  await pushData()
+  showToast('已删除')
+  goBack()
+  renderProductList()
+}
+
+// ==================== 标记卖出 ====================
+function openSoldModal(id, stock) {
+  state.soldProductId = id
+  document.getElementById('soldModalStock').textContent = stock
+  document.getElementById('soldQtyInput').value = ''
+  document.getElementById('soldPriceInput').value = ''
+  document.getElementById('soldModal').classList.add('show')
+  setTimeout(() => document.getElementById('soldQtyInput').focus(), 300)
+}
+
+function closeSoldModal() {
+  document.getElementById('soldModal').classList.remove('show')
+}
+
+async function confirmSold() {
+  const soldQty = parseInt(document.getElementById('soldQtyInput').value)
+  const soldPrice = parseFloat(document.getElementById('soldPriceInput').value) || 0
+  if (!soldQty || soldQty < 1) { showToast('请输入卖出数量'); return }
+
+  const idx = state.products.findIndex(p => p.id === state.soldProductId)
+  if (idx < 0) { showToast('产品不存在'); return }
+
+  const p = state.products[idx]
+  const newQty = Math.max(0, (p.quantity || 0) - soldQty)
+  const newSoldCount = (p.sold_count || 0) + soldQty
+
+  state.products[idx] = {
+    ...p,
+    quantity: newQty,
+    sold_count: newSoldCount,
+    ...(soldPrice > 0 ? { sell: soldPrice, profit: soldPrice - (p.price || 0) } : {}),
+    update_time: new Date().toISOString(),
+  }
+
+  await pushData()
+  showToast('✅ 已标记卖出')
+  closeSoldModal()
+  if (state.currentPage === 'detail') {
+    goDetail(state.soldProductId)
+  }
+  renderProductList()
+}
+
+document.getElementById('soldModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSoldModal()
+})
+
+// ==================== 图片查看器 ====================
+function openImgViewer(srcOrIdx) {
+  const img = document.querySelectorAll('.img-thumb')
+  if (srcOrIdx.startsWith('_base64_')) {
+    const idx = parseInt(srcOrIdx.replace('_base64_', ''))
+    if (state.currentProduct && state.currentProduct.images[idx]) {
+      document.getElementById('imgViewerSrc').src = state.currentProduct.images[idx]
+    }
+  } else {
+    document.getElementById('imgViewerSrc').src = srcOrIdx
+  }
+  document.getElementById('imgViewer').classList.remove('hidden')
+}
+
+function closeImgViewer() {
+  document.getElementById('imgViewer').classList.add('hidden')
+}
+
+// ==================== 添加/编辑产品 ====================
+function initAddPage(product) {
+  state.editProductId = product ? product.id : null
+  document.getElementById('addPageTitle').textContent = product ? '编辑产品' : '添加产品'
+  document.getElementById('submitBtn').textContent = product ? '保存修改' : '保存产品'
+  document.getElementById('fieldBrand').value = product ? (product.brand || '') : ''
+  document.getElementById('fieldModel').value = product ? product.model : ''
+  document.getElementById('fieldFeatures').value = product ? (product.features || []).join(',') : ''
+  document.getElementById('fieldPrice').value = product ? (product.price || '') : ''
+  document.getElementById('fieldSell').value = product ? (product.sell || '') : ''
+  document.getElementById('fieldQty').value = product ? (product.quantity || 1) : 1
+  state.uploadImages = product ? [...(product.images || [])] : []
+  calcProfit()
+  renderUploadArea()
+  renderHistoryBrands()
+}
+
+function renderHistoryBrands() {
+  const brands = getBrands()
+  const wrap = document.getElementById('historyBrandsWrap')
+  const tags = document.getElementById('historyBrandTags')
+  if (!brands.length) { wrap.style.display = 'none'; return }
+  wrap.style.display = ''
+  tags.innerHTML = brands.map(b => `<span class="history-tag" onclick="selectBrand(this)">${escHtml(b)}</span>`).join('')
+}
+
+function selectBrand(el) {
+  document.getElementById('fieldBrand').value = el.textContent
+}
+
+function changeQty(delta) {
+  const input = document.getElementById('fieldQty')
+  input.value = Math.max(0, (parseInt(input.value) || 0) + delta)
+}
+
+function calcProfit() {
+  const price = parseFloat(document.getElementById('fieldPrice').value) || 0
+  const sell = parseFloat(document.getElementById('fieldSell').value) || 0
+  const preview = document.getElementById('profitPreview')
+  const val = document.getElementById('profitPreviewVal')
+  if (price > 0 && sell > 0) {
+    const profit = sell - price
+    preview.style.display = 'flex'
+    val.textContent = (profit >= 0 ? '+' : '') + '¥' + profit.toFixed(2)
+    val.style.color = profit >= 0 ? 'var(--success)' : 'var(--danger)'
+  } else {
+    preview.style.display = 'none'
+  }
+}
+
+// 图片处理（转为base64存JSON）
+function renderUploadArea() {
+  const area = document.getElementById('uploadArea')
+  const items = state.uploadImages.map((url, i) => `
+    <div class="img-upload-item">
+      <img src="${url}" onclick="openImgViewer('_base64_${i}')">
+      <div class="img-delete" onclick="removeUploadImg(${i})">×</div>
+    </div>
+  `).join('')
+  const addBtn = state.uploadImages.length < 5 ? `
+    <div class="img-add-btn" onclick="pickImage()">
+      <span class="icon">📷</span>
+      <span>添加图片</span>
+    </div>` : ''
+  area.innerHTML = items + addBtn
+}
+
+function removeUploadImg(i) {
+  state.uploadImages.splice(i, 1)
+  renderUploadArea()
+}
+
+function pickImage() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.multiple = true
+  input.onchange = async (e) => {
+    const files = Array.from(e.target.files).slice(0, 5 - state.uploadImages.length)
+    for (const file of files) {
+      if (file.size > 1024 * 512) {
+        showToast('单张图片不能超过512KB'); continue
+      }
+      const reader = new FileReader()
+      await new Promise(resolve => {
+        reader.onload = resolve
+        reader.readAsDataURL(file)
+      })
+      if (reader.result) {
+        state.uploadImages.push(reader.result)
+      }
+    }
+    renderUploadArea()
+  }
+  input.click()
+}
+
+async function submitForm() {
+  const model = document.getElementById('fieldModel').value.trim()
+  const price = document.getElementById('fieldPrice').value.trim()
+  if (!model) { showToast('请填写型号/名称'); return }
+  if (!price) { showToast('请填写进价'); return }
+
+  const submitBtn = document.getElementById('submitBtn')
+  submitBtn.disabled = true
+  submitBtn.textContent = '保存中…'
+
+  const featuresRaw = document.getElementById('fieldFeatures').value.trim()
+  const features = featuresRaw ? featuresRaw.split(/[，,]/).map(f => f.trim()).filter(Boolean) : []
+
+  const productData = {
+    brand: document.getElementById('fieldBrand').value.trim(),
+    model,
+    price: parseFloat(price),
+    sell: parseFloat(document.getElementById('fieldSell').value) || 0,
+    quantity: parseInt(document.getElementById('fieldQty').value) || 0,
+    features,
+    images: state.uploadImages,
+    update_time: new Date().toISOString(),
+  }
+
+  const now = new Date().toISOString()
+
+  if (state.editProductId) {
+    // 编辑模式
+    const idx = state.products.findIndex(p => p.id === state.editProductId)
+    if (idx >= 0) {
+      state.products[idx] = { ...state.products[idx], ...productData }
+    }
+  } else {
+    // 新增模式
+    const newProduct = {
+      id: generateId(),
+      ...productData,
+      create_time: now,
+      sold_count: 0,
+    }
+    state.products.unshift(newProduct)  // 新增的排在最前
+  }
+
+  await pushData()
+
+  submitBtn.disabled = false
+  submitBtn.textContent = state.editProductId ? '保存修改' : '保存产品'
+
+  showToast(state.editProductId ? '✅ 修改成功' : '✅ 添加成功')
+
+  if (state.editProductId) {
+    goDetail(state.editProductId)
+  } else {
+    state.editProductId = null
+    initAddPage()
+    goPage('index')
+  }
+}
+
+// ==================== 管理页 ====================
+function loadManageConfig() {
+  document.getElementById('mgUserCode').value = (state.config.password || '')
+  document.getElementById('permHidePrice').checked = !!state.config.hidePrice
+}
+
+async function saveManageConfig() {
+  state.config.password = document.getElementById('mgUserCode').value.trim()
+  state.config.hidePrice = document.getElementById('permHidePrice').checked
+
+  await pushData()
+  showToast('✅ 设置已保存')
+}
+
+function exportData() {
+  const data = { products: state.products, config: state.config, exportTime: new Date().toISOString() }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `产品明细备份_${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  showToast('✅ 导出成功')
+}
+
+function importData(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    try {
+      const imported = JSON.parse(e.target.result)
+      if (!confirm(`即将导入 ${imported.products ? imported.products.length : 0} 条产品数据，是否继续？\n（现有数据将被覆盖）`)) return
+      state.products = imported.products || []
+      state.config = { ...state.config, ...(imported.config || {}) }
+      await pushData()
+      showToast('✅ 导入成功')
+      loadManageConfig()
+    } catch (err) {
+      showToast('文件格式错误')
+    }
+  }
+  reader.readAsText(file)
+  event.target.value = ''  // 重置以便重复选择同一文件
+}
+
+// ==================== 初始化 ====================
+autoLogin()
+</script>
+</body>
+</html>
