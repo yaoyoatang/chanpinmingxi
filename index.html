@@ -525,12 +525,12 @@ a{text-decoration:none;color:inherit}
     <!-- Token登录 -->
     <div id="loginTokenPanel" style="display:none">
       <div style="font-size:12px;color:var(--text-sub);margin-bottom:10px;line-height:1.6;background:var(--bg);padding:10px 12px;border-radius:8px">
-        <b>管理员专用：</b>首次使用需GitHub Token初始化系统。<br>
+        <b>管理员专用：</b>首次使用需 Gitee Token 初始化系统。<br>
         <b>第1步：</b><a href="https://github.com/settings/tokens/new?scopes=repo&description=产品明细" target="_blank" style="color:var(--primary)">创建Token</a>（勾选repo权限）<br>
         <b>第2步：</b>复制Token粘贴到下方
       </div>
-      <input class="login-input login-input-token" type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxx" maxlength="250" style="font-size:13px;font-family:'Courier New',monospace">
-      <button class="login-btn" onclick="doTokenLogin()" id="tokenLoginBtn">连接 GitHub</button>
+      <input class="login-input login-input-token" type="password" id="tokenInput" placeholder="Gitee 个人令牌" maxlength="250" style="font-size:13px;font-family:'Courier New',monospace">
+      <button class="login-btn" onclick="doTokenLogin()" id="tokenLoginBtn">连接云端（管理员）</button>
       <div class="login-err" id="tokenLoginErr"></div>
     </div>
 
@@ -747,7 +747,11 @@ a{text-decoration:none;color:inherit}
 
 <script>
 // ==================== 配置 ====================
+// 阿里云函数计算 API 地址（部署后填入实际URL）
+const API_BASE = 'https://chanpinmingxi-api.cn-shanghai.fcapp.run'
+
 const CONFIG = {
+  // 保留用于本地模式兼容
   owner: 'yaoyoatang',
   repo: 'product-data',
   dataPath: 'data.json',
@@ -757,7 +761,7 @@ const CONFIG = {
 const state = {
   currentPage: 'login',
   pageStack: [],
-  token: '',              // GitHub PAT (管理员云端模式)
+  token: '',              // Gitee Token (管理员云端模式)
   products: [],
   config: {},
   users: [],             // 所有用户列表
@@ -861,68 +865,40 @@ function hasPermission(perm) {
   return !!p[perm]
 }
 
-// ==================== GitHub API 核心层 ====================
-const GH_API = '/api'
+// ==================== 云端API核心层（阿里云函数计算） ====================
 
-async function ghFetch(path, options = {}) {
-  const url = `${GH_API}${path}`
+async function apiFetch(path, options = {}) {
+  const url = `${API_BASE}${path}`
   const headers = {
-    'Accept': 'application/vnd.github.v3+json',
-    'Authorization': `Bearer ${state.token}`,
+    'Content-Type': 'application/json',
     ...options.headers,
   }
+  // 如果有Token，带上认证
+  if (state.token) {
+    headers['Authorization'] = `Bearer ${state.token}`
+  }
   const res = await fetch(url, { ...options, headers })
-  if (res.status === 401) throw new Error('Token无效或已过期')
-  if (res.status === 403) throw new Error('权限不足')
-  if (res.status === 404) return null
-  if (!res.ok) throw new Error(`请求失败 (${res.status})`)
-  const result = await res.json()
-  if (result.sha) state.dataSha = result.sha
-  return result
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}))
+    throw new Error(errBody.message || `请求失败 (${res.status})`)
+  }
+  return res.json()
 }
 
-async function ghReadData() {
+async function readCloudData() {
   try {
-    const result = await ghFetch(`/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}`)
-    if (!result) return getDefaultData()
-    const decoded = atob(result.content)
-    const data = JSON.parse(decoded)
-    state.dataSha = result.sha
+    const data = await apiFetch('/api/data')
     return ensureDataSchema(data)
   } catch (err) {
-    if (err.message.includes('Not Found')) return getDefaultData()
+    if (err.message.includes('Not Found') || err.message.includes('不存在')) return getDefaultData()
     throw err
   }
 }
 
-async function ghWriteData(data) {
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))))
-  const body = {
-    message: `update data ${new Date().toLocaleString()}`,
-    content: content,
-  }
-  if (state.dataSha) body.sha = state.dataSha
-  const result = await ghFetch(`/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  state.dataSha = result.content.sha
-  return result
-}
-
-async function ghCreateRepo() {
-  await ghFetch('/user/repos', {
+async function writeCloudData(data) {
+  await apiFetch('/api/data', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: CONFIG.repo,
-      description: '产品明细 - 数据存储',
-      private: true,
-      has_issues: false,
-      has_projects: false,
-      has_wiki: false,
-    }),
+    body: JSON.stringify(data),
   })
 }
 
@@ -968,7 +944,7 @@ async function pullData(showLoadingFlag = true) {
   }
   if (showLoadingFlag) showLoading('正在同步数据…')
   try {
-    const data = await ghReadData()
+    const data = await readCloudData()
     saveLocalCache(data)
     applyData(data)
     if (showLoadingFlag) hideLoading()
@@ -1007,7 +983,7 @@ async function pushData() {
     // 先拉最新的sha，避免冲突
     let latestData = null
     try {
-      latestData = await ghReadData()
+      latestData = await readCloudData()
     } catch(e) {
       // 拉取失败继续用旧sha尝试写
     }
@@ -1020,7 +996,7 @@ async function pushData() {
       saveLocalCache(data)
     }
 
-    await ghWriteData(data)
+    await writeCloudData(data)
     state.pendingCount = 0
     showSyncStatus('✅ 已同步')
     updateSyncUI()
@@ -1037,7 +1013,7 @@ async function pushData() {
       // 重置sha重试一次
       state.dataSha = ''
       try {
-        await ghWriteData(collectData())
+        await writeCloudData(collectData())
         state.pendingCount = 0
         showSyncStatus('✅ 已同步')
         showToast('✅ 同步成功')
@@ -1144,9 +1120,9 @@ async function doAccountLogin() {
   if (!success && cachedToken) {
     state.token = cachedToken
     try {
-      await ghFetch('/user')  // 验证Token是否有效
+      await apiFetch('/api/user')  // 验证Token是否有效
       state.cloudSync = true
-      const cloudData = await ghReadData()
+      const cloudData = await readCloudData()
       foundUser = findUser(cloudData.users, username, password)
       if (foundUser) {
         success = true
@@ -1174,7 +1150,7 @@ async function doAccountLogin() {
   // 如果是管理员且有Token，保持云端连接
   if (!state.cloudSync && cachedToken && foundUser.role === 'admin') {
     state.token = cachedToken
-    try { await ghFetch('/user'); state.cloudSync = true } catch(e) {}
+    try { await apiFetch('/api/user'); state.cloudSync = true } catch(e) {}
   }
 
   // 保存登录状态
@@ -1223,26 +1199,39 @@ async function doTokenLogin() {
 
   try {
     showLoading('验证Token…')
-    const ghUser = await ghFetch('/user')
-    if (!ghUser || !ghUser.login) throw new Error('Token无效')
+    const apiUser = await apiFetch('/api/user')
+    if (!apiUser || !apiUser.login) throw new Error('Token无效')
     hideLoading()
 
-    // 检查/创建仓库
-    showLoading('检查数据仓库…')
-    let data = await ghReadData()
-    if (data === null || (data.products === undefined)) {
+    // 检查数据仓库
+    showLoading('检查数据…')
+    let data
+    try {
+      data = await readCloudData()
+    } catch(e) {
+      data = null
+    }
+    
+    if (!data || data.products === undefined) {
       hideLoading()
-      if (confirm('检测到这是首次使用。\n\n点击「确定」将自动创建私有仓库并初始化系统。')) {
+      if (confirm('检测到这是首次使用。\n\n请先在 Gitee 创建私有仓库 product-data\n并在其中创建 data.json 文件。\n\n点击「确定」将自动初始化数据。')) {
         showLoading('初始化系统中…')
-        await ghCreateRepo()
-        const initData = getDefaultData()
-        await ghWriteData(initInitAdminUser(initData, ghUser.login))
-        data = initAdminData(initData, ghUser.login)
-        hideLoading()
-        showToast('✅ 系统初始化成功！请设置管理员账号密码')
+        const initData = initAdminData(getDefaultData(), apiUser.login)
+        try {
+          await writeCloudData(initData)
+          data = initData
+          hideLoading()
+          showToast('✅ 系统初始化成功！')
+        } catch(initErr) {
+          hideLoading()
+          alert('初始化失败：' + initErr.message + '\n\n请确认已在Gitee创建私有仓库product-data并配置好环境变量。')
+          btn.disabled = false
+          btn.textContent = '连接云端'
+          return
+        }
       } else {
         btn.disabled = false
-        btn.textContent = '连接 GitHub'
+        btn.textContent = '连接云端'
         return
       }
     } else {
@@ -1251,33 +1240,27 @@ async function doTokenLogin() {
 
     // 查找或关联管理员账户
     state.cloudSync = true
-    let adminUser = data.users.find(u => u.role === 'admin' && u.githubLogin === ghUser.login)
+    let adminUser = data.users.find(u => u.role === 'admin')
 
-    if (!adminUser && data.users.length === 0) {
+    if (!adminUser || data.users.length === 0) {
       // 首次：还没有任何用户，自动创建管理员
-      data = initAdminData(data, ghUser.login)
-      await ghWriteData(data)
+      data = initAdminData(data, apiUser.login)
+      await writeCloudData(data)
       adminUser = data.users[0]
     }
 
     if (adminUser) {
       state.currentUser = adminUser
     } else {
-      // 找到了用户列表但没有匹配的管理员，用第一个admin
-      adminUser = data.users.find(u => u.role === 'admin')
-      if (adminUser) {
-        state.currentUser = adminUser
-      } else {
-        // 兜底：创建一个临时管理员身份
-        state.currentUser = {
-          id: generateId(),
-          username: ghUser.login,
-          name: ghUser.name || ghUser.login,
-          role: 'admin',
-          githubLogin: ghUser.login,
-          permissions: { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true },
-          status: 'active',
-        }
+      // 兜底：创建一个临时管理员身份
+      state.currentUser = {
+        id: generateId(),
+        username: apiUser.login,
+        name: apiUser.name || apiUser.login,
+        role: 'admin',
+        giteeLogin: apiUser.login,
+        permissions: { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true },
+        status: 'active',
       }
     }
 
@@ -1296,14 +1279,14 @@ async function doTokenLogin() {
         if (!newUsername || !newUsername.trim()) {
           showToast('需要设置用户名才能继续')
           btn.disabled = false
-          btn.textContent = '连接 GitHub'
+          btn.textContent = '连接云端'
           return
         }
         const newPassword = prompt('设置你的登录密码:')
         if (!newPassword || !newPassword.trim()) {
           showToast('需要设置密码才能继续')
           btn.disabled = false
-          btn.textContent = '连接 GitHub'
+          btn.textContent = '连接云端'
           return
         }
         // 更新管理员账号信息
@@ -1329,7 +1312,7 @@ async function doTokenLogin() {
 
     setTimeout(() => {
       goPage('index', false)
-      showSyncStatus(`☁️ @${ghUser.login}`)
+      showSyncStatus(`☁️ @${apiUser.login}`)
     }, 300)
 
   } catch (err) {
@@ -1341,18 +1324,18 @@ async function doTokenLogin() {
   }
 }
 
-function initAdminData(data, githubLogin) {
+function initAdminData(data, loginName) {
   if (!data.users) data.users = []
   // 检查是否已有admin
   const existingAdmin = data.users.find(u => u.role === 'admin')
   if (!existingAdmin) {
     data.users.push({
       id: generateId(),
-      username: githubLogin.toLowerCase().replace(/[^a-z0-9]/g, '') || 'admin',
+      username: loginName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'admin',
       password: '',  // 需要后续设置密码
-      name: githubLogin,
+      name: loginName,
       role: 'admin',
-      githubLogin: githubLogin,
+      giteeLogin: loginName,
       permissions: { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true },
       createdAt: new Date().toISOString(),
       status: 'active',
@@ -1361,8 +1344,8 @@ function initAdminData(data, githubLogin) {
   return data
 }
 
-function initInitAdminUser(data, githubLogin) {
-  return initAdminData(data, githubLogin)
+function initInitAdminUser(data, loginName) {
+  return initAdminData(data, loginName)
 }
 
 // ==================== 同步系统 ====================
@@ -1394,7 +1377,7 @@ async function doManualSync() {
   // 如果没有Token，尝试用缓存的
   const cachedToken = localStorage.getItem('pm_token')
   if (!cachedToken) {
-    showToast('请先连接 GitHub 才能同步', 2500)
+    showToast('请先连接云端才能同步', 2500)
     return
   }
   state.token = cachedToken
@@ -1402,29 +1385,18 @@ async function doManualSync() {
   showSyncStatus('正在同步…')
   try {
     // 先验证 Token
-    await ghFetch('/user')
+    await apiFetch('/api/user')
     state.cloudSync = true
 
-    // 拉取远程最新数据，合并后推送
-    let remoteData
-    try {
-      remoteData = await ghReadData()
-    } catch(e) {
-      remoteData = null
-    }
-
+    // 使用服务端同步接口（服务端处理合并）
     const localData = collectData()
-    let finalData = localData
+    const result = await apiFetch('/api/sync', {
+      method: 'POST',
+      body: JSON.stringify(localData),
+    })
 
-    if (remoteData) {
-      // 简单合并：以本地产品数据为准（本地最新操作），但合并远程的用户/邀请码变更
-      finalData.products = localData.products || []
-      finalData.config = { ...(remoteData.config || {}), ...(localData.config || {}) }
-      finalData.users = mergeUsers(remoteData.users || [], localData.users || [])
-      finalData.invites = remoteData.invites || localData.invites || []
-    }
-
-    await ghWriteData(finalData)
+    // 使用服务端返回的合并后数据
+    const finalData = result.data || result
     applyData(finalData)
     saveLocalCache(finalData)
     state.pendingCount = 0
@@ -1514,7 +1486,7 @@ async function doRegister() {
   showLoading('验证邀请码…')
   let data
   try {
-    data = state.cloudSync ? await ghReadData() : getLocalData()
+    data = state.cloudSync ? await readCloudData() : getLocalData()
   } catch(e) {
     data = getLocalData()
   }
@@ -1577,7 +1549,7 @@ async function doRegister() {
   applyData(data)
   saveLocalCache(data)
   if (state.cloudSync) {
-    try { await ghWriteData(data) } catch(e) { /* 继续本地 */ }
+    try { await writeCloudData(data) } catch(e) { /* 继续本地 */ }
   }
 
   showToast('✅ 注册成功！正在登录…')
@@ -1600,10 +1572,10 @@ async function autoLogin() {
     if (cachedToken) {
       state.token = cachedToken
       try {
-        const ghUser = await ghFetch('/user')
-        if (ghUser && ghUser.login) {
+        const apiUser = await apiFetch('/api/user')
+        if (apiUser && apiUser.login) {
           state.cloudSync = true
-          const data = await ghReadData()
+          const data = await readCloudData()
           // 查找上次登录的用户
           const user = data.users.find(u => u.username === lastUser)
           if (user) {
