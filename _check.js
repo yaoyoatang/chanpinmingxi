@@ -24,6 +24,7 @@ const state = {
   soldProductId: null,
   dataSha: '',
   cloudSync: false,      // 是否开启云端同步
+  pendingCount: 0,       // 待同步的本地变更数
   editingUserId: null,   // 正在编辑权限的用户ID
 }
 
@@ -229,21 +230,26 @@ function applyData(data) {
 
 async function pushData() {
   const data = collectData()
+  saveLocalCache(data)
+
   if (!state.cloudSync) {
-    saveLocalCache(data)
-    showSyncStatus('💾 已保存')
+    state.pendingCount++
+    showSyncStatus('💾 已保存（本地）')
+    updateSyncUI()
     return true
   }
-  showSyncStatus('正在保存…')
+  showSyncStatus('正在同步…')
   try {
     await ghWriteData(data)
-    saveLocalCache(data)
+    state.pendingCount = 0
     showSyncStatus('✅ 已同步')
+    updateSyncUI()
     return true
   } catch (err) {
-    saveLocalCache(data)
-    showSyncStatus('❌ 已保存到本地')
-    showToast('网络异常，数据已保存在浏览器本地')
+    state.pendingCount++
+    showSyncStatus(`⚠️ 待同步(${state.pendingCount})`)
+    showToast('网络异常，已保存到本地，恢复网络后点击🔄同步')
+    updateSyncUI()
     return false
   }
 }
@@ -273,7 +279,7 @@ function goPage(name, pushStack = true) {
 
   updateUIForPermissions()
 
-  if (name === 'index') renderProductList()
+  if (name === 'index') { renderProductList(); updateSyncUI() }
   if (name === 'add') initAddPage()
   if (name === 'manage') loadManageConfig()
   if (name === 'users') renderUserList()
@@ -385,7 +391,6 @@ async function doAccountLogin() {
   // 登录成功
   state.currentUser = user
   applyData(localData)
-  if (user.role === 'admin') showLocalBtnForAdmin()  // 管理员才显示本地模式按钮
 
   // 保存登录状态
   try { localStorage.setItem('pm_last_user', username) } catch(e) {}
@@ -495,7 +500,6 @@ async function doTokenLogin() {
     saveLocalCache(data)
     localStorage.setItem('pm_token', token)
     localStorage.setItem('pm_cloud_ready', 'true')
-    showLocalBtnForAdmin()  // 管理员才显示本地模式按钮
 
     btn.textContent = '✅ 已连接'
     btn.style.background = '#07c160'
@@ -539,35 +543,131 @@ function initInitAdminUser(data, githubLogin) {
   return initAdminData(data, githubLogin)
 }
 
-// ==================== 本地模式 ====================
-function showLocalBtnForAdmin() {
-  const btn = document.getElementById('localBtn')
-  if (btn) btn.classList.remove('hidden')
+// ==================== 同步系统 ====================
+function updateSyncUI() {
+  const syncBtn = document.getElementById('syncBtn')
+  if (!syncBtn) return
+  // 只在有用户登录且进入主页面时显示同步按钮
+  if (state.currentUser && state.currentPage === 'index') {
+    syncBtn.style.display = ''
+    if (state.pendingCount > 0) {
+      syncBtn.textContent = `🔄 ${state.pendingCount}`
+      syncBtn.style.color = '#ff8800'
+      syncBtn.style.fontWeight = '700'
+    } else if (state.cloudSync) {
+      syncBtn.textContent = '☁️'
+      syncBtn.style.color = '#07c160'
+      syncBtn.style.fontWeight = '400'
+    } else {
+      syncBtn.textContent = '📱'
+      syncBtn.style.color = '#888'
+      syncBtn.style.fontWeight = '400'
+    }
+  } else {
+    syncBtn.style.display = 'none'
+  }
 }
 
+async function doManualSync() {
+  // 如果没有Token，尝试用缓存的
+  const cachedToken = localStorage.getItem('pm_token')
+  if (!cachedToken) {
+    showToast('请先连接 GitHub 才能同步', 2500)
+    return
+  }
+  state.token = cachedToken
+
+  showSyncStatus('正在同步…')
+  try {
+    // 先验证 Token
+    await ghFetch('/user')
+    state.cloudSync = true
+
+    // 拉取远程最新数据，合并后推送
+    let remoteData
+    try {
+      remoteData = await ghReadData()
+    } catch(e) {
+      remoteData = null
+    }
+
+    const localData = collectData()
+    let finalData = localData
+
+    if (remoteData) {
+      // 简单合并：以本地产品数据为准（本地最新操作），但合并远程的用户/邀请码变更
+      finalData.products = localData.products || []
+      finalData.config = { ...(remoteData.config || {}), ...(localData.config || {}) }
+      finalData.users = mergeUsers(remoteData.users || [], localData.users || [])
+      finalData.invites = remoteData.invites || localData.invites || []
+    }
+
+    await ghWriteData(finalData)
+    applyData(finalData)
+    saveLocalCache(finalData)
+    state.pendingCount = 0
+    renderProducts()
+    showSyncStatus('✅ 已同步到云端')
+    showToast('✅ 数据已同步到云端')
+  } catch (err) {
+    showSyncStatus('❌ 同步失败')
+    showToast('网络异常，请检查网络后重试')
+  }
+  updateSyncUI()
+}
+
+function mergeUsers(remote, local) {
+  // 以 local 为准，补充 remote 中有但 local 没有的
+  const map = {}
+  ;(local || []).forEach(u => { map[u.id] = u })
+  ;(remote || []).forEach(u => {
+    if (!map[u.id]) map[u.id] = u
+  })
+  return Object.values(map)
+}
+
+// ==================== 本地模式 ====================
 function useLocalMode() {
-  state.token = ''
-  state.cloudSync = false
-  state.currentUser = null
+  state.pendingCount = 0
   const cached = getLocalData()
   applyData(cached)
 
-  // 如果本地有用户数据，尝试自动登录第一个admin
-  const admin = cached.users.find(u => u.role === 'admin')
-  if (cached.users.length > 0 && admin) {
-    state.currentUser = admin
-    goPage('index', false)
-    showToast('✅ 本地模式（管理员）')
-    showSyncStatus('📱 本地模式')
-  } else if (cached.users.length > 0) {
-    state.currentUser = cached.users[0]
-    goPage('index', false)
-    showToast('✅ 本地模式')
-    showSyncStatus('📱 本地模式')
-  } else {
-    // 完全新用户，给个提示
-    showToast('📱 本地模式 - 请先用Token登录初始化系统')
+  // 尝试用上次缓存的账号自动登录
+  const lastUser = localStorage.getItem('pm_last_user')
+  if (lastUser && cached.users && cached.users.length > 0) {
+    const user = cached.users.find(u => u.username === lastUser && u.status !== 'disabled')
+    if (user) {
+      state.currentUser = user
+      state.cloudSync = false
+      goPage('index', false)
+      // 检查是否有缓存的Token可以尝试云端
+      const token = localStorage.getItem('pm_token')
+      if (token) {
+        showSyncStatus(`📱 ${user.name || user.username}（可点🔄同步）`)
+        showToast(`欢迎回来，${user.name || user.username}`)
+      } else {
+        showSyncStatus(`📱 ${user.name || user.username}（离线）`)
+        showToast(`欢迎回来，${user.name || user.username}`)
+      }
+      updateSyncUI()
+      return
+    }
   }
+
+  // 兜底：有用户数据就用第一个可用用户
+  if (cached.users && cached.users.length > 0) {
+    const avail = cached.users.find(u => u.status !== 'disabled') || cached.users[0]
+    state.currentUser = avail
+    state.cloudSync = false
+    goPage('index', false)
+    showSyncStatus(`📱 ${avail.name || avail.username}`)
+    showToast(`✅ 本地模式 - ${avail.name || avail.username}`)
+    updateSyncUI()
+    return
+  }
+
+  // 完全新用户
+  showToast('📱 首次使用 - 请先注册或用管理员Token登录')
 }
 
 // ==================== 注册 ====================
@@ -710,7 +810,6 @@ async function autoLogin() {
     if (admin) {
       state.currentUser = admin
       applyData(localData)
-      showLocalBtnForAdmin()  // 管理员显示本地模式入口
       // 不自动进入，让用户手动点登录
     }
   }
