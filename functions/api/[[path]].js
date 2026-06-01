@@ -1,6 +1,7 @@
 // 产品明细分销系统 - Cloudflare Pages Function 后端
 // 数据存储：Cloudflare KV (通过环境变量绑定)
 // 路径：/api/data, /api/sync, /api/user
+// v2
 
 const DATA_KEY = 'app_data'
 
