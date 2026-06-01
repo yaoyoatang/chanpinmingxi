@@ -979,9 +979,8 @@ async function pushData() {
   const data = collectData()
   saveLocalCache(data)
 
-  // 没有Token/没联网时只存本地
-  const hasToken = !!localStorage.getItem('pm_token')
-  if (!state.cloudSync || !hasToken) {
+  // 没开启云端同步时只存本地
+  if (!state.cloudSync) {
     state.pendingCount = Math.max(1, (state.pendingCount || 0) + 1)
     showSyncStatus('💾 已保存（本地）')
     updateSyncUI()
@@ -1176,13 +1175,13 @@ async function doAccountLogin() {
   goPage('index', false)
   showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
 
-  // 如果是管理员且有Token，后台尝试连接云端（不阻塞界面）
-  if (!state.cloudSync && cachedToken && foundUser.role === 'admin') {
-    state.token = cachedToken
-    apiFetch('/api/user').then(() => {
+  // 管理员登录后，后台尝试连接云端（FC 后端不需要 Token）
+  if (!state.cloudSync && foundUser.role === 'admin') {
+    apiFetch('/api/data').then(() => {
       state.cloudSync = true
       showSyncStatus(`☁️ ${foundUser.name || foundUser.username}`)
       showToast('☁️ 云端连接成功')
+      updateSyncUI()
     }).catch(() => {
       // 云端连不上，保持本地模式
     })
@@ -1389,18 +1388,10 @@ function updateSyncUI() {
 }
 
 async function doManualSync() {
-  // 如果没有Token，尝试用缓存的
-  const cachedToken = localStorage.getItem('pm_token')
-  if (!cachedToken) {
-    showToast('请先连接云端才能同步', 2500)
-    return
-  }
-  state.token = cachedToken
-
   showSyncStatus('正在同步…')
   try {
-    // 先验证 Token
-    await apiFetch('/api/user')
+    // 测试云端是否可达
+    await apiFetch('/api/data')
     state.cloudSync = true
 
     // 使用服务端同步接口（服务端处理合并）
@@ -1419,8 +1410,9 @@ async function doManualSync() {
     showSyncStatus('✅ 已同步到云端')
     showToast('✅ 数据已同步到云端')
   } catch (err) {
+    state.cloudSync = false
     showSyncStatus('❌ 同步失败')
-    showToast('网络异常，请检查网络后重试')
+    showToast(err.message || '网络异常，请检查网络后重试')
   }
   updateSyncUI()
 }
@@ -1604,34 +1596,26 @@ async function autoLogin() {
   // 1. 检查上次登录的用户名（账号登录优先）
   const lastUser = localStorage.getItem('pm_last_user')
   if (lastUser) {
-    const lastPwd = localStorage.getItem('pm_last_pwd')  // 不存密码，只存用户名用于提示
-    // 尝试用缓存的Token做云端账号登录
-    const cachedToken = localStorage.getItem('pm_token')
-    if (cachedToken) {
-      state.token = cachedToken
-      try {
-        const apiUser = await apiFetch('/api/user')
-        if (apiUser && apiUser.login) {
-          state.cloudSync = true
-          const data = await readCloudData()
-          // 查找上次登录的用户
-          const user = data.users.find(u => u.username === lastUser)
-          if (user) {
-            applyData(data)
-            saveLocalCache(data)
-            state.currentUser = user
-            document.getElementById('acctLoginBtn').textContent = '✅ 自动登录中'
-            setTimeout(() => {
-              goPage('index', false)
-              showSyncStatus(`☁️ ${user.name || user.username}`)
-            }, 300)
-            return
-          }
-        }
-      } catch(e) {
-        // Token失效
-        localStorage.removeItem('pm_token')
+    // 尝试直接连接云端（FC 后端不需要 Token）
+    try {
+      const cloudData = await apiFetch('/api/data')
+      state.cloudSync = true
+      // 查找上次登录的用户
+      const users = cloudData.users || []
+      const user = users.find(u => u.username === lastUser)
+      if (user) {
+        applyData(cloudData)
+        saveLocalCache(cloudData)
+        state.currentUser = user
+        document.getElementById('acctLoginBtn').textContent = '✅ 自动登录中'
+        setTimeout(() => {
+          goPage('index', false)
+          showSyncStatus(`☁️ ${user.name || user.username}`)
+        }, 300)
+        return
       }
+    } catch(e) {
+      // 云端连不上，继续走本地模式
     }
   }
 
