@@ -5,25 +5,52 @@
 
 const DATA_KEY = 'app_data'
 
+// 确保数据结构正确（兼容旧数据）
+function ensureSchema(data) {
+  if (!data) data = {}
+  if (!Array.isArray(data.products)) data.products = []
+  if (!data.config || typeof data.config !== 'object') data.config = { brands: [], categories: [], priceVisible: true, hidePriceDefault: false }
+  // users 兼容：旧数据可能是对象，转成数组
+  if (!Array.isArray(data.users)) {
+    if (data.users && typeof data.users === 'object') {
+      data.users = Object.values(data.users)
+    } else {
+      data.users = []
+    }
+  }
+  // invites 兼容：旧数据可能是 inviteCodes 对象
+  if (!Array.isArray(data.invites)) {
+    if (data.inviteCodes && typeof data.inviteCodes === 'object') {
+      data.invites = Object.values(data.inviteCodes)
+    } else {
+      data.invites = []
+    }
+  }
+  if (typeof data._version !== 'number') data._version = 1
+  return data
+}
+
 async function readData(env) {
   const kv = env.DATA_KV
   if (!kv) {
     throw new Error('KV not bound. Please bind a KV namespace named DATA_KV in Pages settings.')
   }
   const raw = await kv.get(DATA_KEY)
+  let data
   if (raw) {
-    return JSON.parse(raw)
+    data = JSON.parse(raw)
+  } else {
+    // 首次使用，创建默认数据（和前端数据结构保持一致）
+    data = {
+      products: [],
+      config: { brands: [], categories: [], priceVisible: true, hidePriceDefault: false },
+      users: [],
+      invites: [],
+      _version: 1
+    }
+    await kv.put(DATA_KEY, JSON.stringify(data))
   }
-  // 首次使用，创建默认数据
-  const d = {
-    products: [],
-    config: { brands: [], categories: [], priceVisible: true },
-    users: {},
-    inviteCodes: {},
-    _version: 1
-  }
-  await kv.put(DATA_KEY, JSON.stringify(d))
-  return d
+  return ensureSchema(data)
 }
 
 function jsonResponse(data, status = 200) {

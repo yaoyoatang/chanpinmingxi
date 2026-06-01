@@ -923,8 +923,15 @@ function getDefaultData() {
 }
 
 function ensureDataSchema(data) {
-  if (!data.users) data.users = []
-  if (!data.invites) data.invites = []
+  if (!data) data = {}
+  // users 兼容：后端旧数据可能是对象
+  if (!Array.isArray(data.users)) {
+    data.users = (data.users && typeof data.users === 'object') ? Object.values(data.users) : []
+  }
+  // invites 兼容：后端旧数据用 inviteCodes
+  if (!Array.isArray(data.invites)) {
+    data.invites = (data.inviteCodes && typeof data.inviteCodes === 'object') ? Object.values(data.inviteCodes) : []
+  }
   if (!data.config) data.config = {}
   if (data.config.hidePriceDefault === undefined) data.config.hidePriceDefault = false
   return data
@@ -971,8 +978,10 @@ async function pullData(showLoadingFlag = true) {
 function applyData(data) {
   state.products = data.products || []
   state.config = data.config || {}
-  state.users = data.users || []
-  state.invites = data.invites || []
+  // users 兼容：后端旧数据可能是对象
+  state.users = Array.isArray(data.users) ? data.users : (data.users && typeof data.users === 'object' ? Object.values(data.users) : [])
+  // invites 兼容：后端旧数据用 inviteCodes
+  state.invites = Array.isArray(data.invites) ? data.invites : (data.inviteCodes && typeof data.inviteCodes === 'object' ? Object.values(data.inviteCodes) : [])
 }
 
 async function pushData() {
@@ -999,8 +1008,10 @@ async function pushData() {
     if (latestData) {
       // 合并：本地产品优先（最新操作），用户/邀请码合并
       data.products = data.products || []
-      data.users = mergeUsers(latestData.users || [], data.users || [])
-      data.invites = latestData.invites || data.invites || []
+      const latestUsers = Array.isArray(latestData.users) ? latestData.users : []
+      const localUsers = Array.isArray(data.users) ? data.users : []
+      data.users = mergeUsers(latestUsers, localUsers)
+      data.invites = Array.isArray(latestData.invites) ? latestData.invites : (data.invites || [])
       applyData(data)
       saveLocalCache(data)
     }
@@ -1254,6 +1265,8 @@ async function doTokenLogin() {
 
     // 查找或关联管理员账户
     state.cloudSync = true
+    // 兜底：确保 users 是数组
+    if (!Array.isArray(data.users)) data.users = []
     let adminUser = data.users.find(u => u.role === 'admin')
 
     if (!adminUser || data.users.length === 0) {
@@ -1339,7 +1352,8 @@ async function doTokenLogin() {
 }
 
 function initAdminData(data, loginName) {
-  if (!data.users) data.users = []
+  // 兼容：后端旧数据 users 可能是对象
+  if (!Array.isArray(data.users)) data.users = []
   // 检查是否已有admin
   const existingAdmin = data.users.find(u => u.role === 'admin')
   if (!existingAdmin) {
@@ -1420,9 +1434,11 @@ async function doManualSync() {
 function mergeUsers(remote, local) {
   // 以 local 为准，补充 remote 中有但 local 没有的
   const map = {}
-  ;(local || []).forEach(u => { map[u.id] = u })
-  ;(remote || []).forEach(u => {
-    if (!map[u.id]) map[u.id] = u
+  const safeLocal = Array.isArray(local) ? local : []
+  const safeRemote = Array.isArray(remote) ? remote : []
+  safeLocal.forEach(u => { if (u && u.id) map[u.id] = u })
+  safeRemote.forEach(u => {
+    if (u && u.id && !map[u.id]) map[u.id] = u
   })
   return Object.values(map)
 }
@@ -1601,7 +1617,7 @@ async function autoLogin() {
       const cloudData = await apiFetch('/api/data')
       state.cloudSync = true
       // 查找上次登录的用户
-      const users = cloudData.users || []
+      const users = Array.isArray(cloudData.users) ? cloudData.users : []
       const user = users.find(u => u.username === lastUser)
       if (user) {
         applyData(cloudData)
