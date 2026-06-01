@@ -1,54 +1,102 @@
-// Cloudflare Pages Function - GitHub API 代理
-// 所有 /api/* 请求会被转发到 api.github.com
+// 产品明细分销系统 - Cloudflare Pages Function 后端
+// 数据存储：Cloudflare KV (通过环境变量绑定)
+// 路径：/api/data, /api/sync, /api/user
+
+const DATA_KEY = 'app_data'
+
+async function readData(env) {
+  const kv = env.DATA_KV
+  if (!kv) {
+    throw new Error('KV not bound. Please bind a KV namespace named DATA_KV in Pages settings.')
+  }
+  const raw = await kv.get(DATA_KEY)
+  if (raw) {
+    return JSON.parse(raw)
+  }
+  // 首次使用，创建默认数据
+  const d = {
+    products: [],
+    config: { brands: [], categories: [], priceVisible: true },
+    users: {},
+    inviteCodes: {},
+    _version: 1
+  }
+  await kv.put(DATA_KEY, JSON.stringify(d))
+  return d
+}
+
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    }
+  })
+}
 
 export async function onRequest(context) {
-  const { request } = context;
+  const { request, env } = context
+  const url = new URL(request.url)
+  const path = url.pathname
+  const method = request.method
 
-  // 处理 CORS 预检请求
-  if (request.method === 'OPTIONS') {
+  // CORS 预检
+  if (method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': '*',
-        'Access-Control-Max-Age': '86400',
-      },
-    });
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    })
   }
 
-  // 获取原始路径（去掉 /api 前缀）
-  const url = new URL(request.url);
-  const targetPath = url.pathname.replace(/^\/api/, '') + url.search;
-  const targetUrl = `https://api.github.com${targetPath}`;
-
   try {
-    // 转发请求到 GitHub API
-    const ghHeaders = new Headers(request.headers);
-    ghHeaders.delete('host'); // 移除 Pages 的 host header
+    // GET /api/data — 获取数据
+    if (method === 'GET' && path === '/api/data') {
+      const data = await readData(env)
+      return jsonResponse(data)
+    }
 
-    const response = await fetch(targetUrl, {
-      method: request.method,
-      headers: ghHeaders,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.blob() : undefined,
-    });
+    // POST/PUT /api/data — 保存数据
+    if ((method === 'POST' || method === 'PUT') && path === '/api/data') {
+      const body = await request.json()
+      body._version = (body._version || 0) + 1
+      body._updatedAt = new Date().toISOString()
+      await env.DATA_KV.put(DATA_KEY, JSON.stringify(body))
+      return jsonResponse({ success: true, version: body._version })
+    }
 
-    // 创建响应，添加 CORS headers
-    const newHeaders = new Headers(response.headers);
-    newHeaders.set('Access-Control-Allow-Origin', '*');
+    // POST /api/sync — 同步数据
+    if (method === 'POST' && path === '/api/sync') {
+      const sd = await request.json()
+      const cloud = await readData(env)
+      const cv = cloud._version || 0
+      const lv = sd._version || 0
+      let result = cloud
+      if (lv >= cv) {
+        sd._version = cv + 1
+        sd._updatedAt = new Date().toISOString()
+        await env.DATA_KV.put(DATA_KEY, JSON.stringify(sd))
+        result = sd
+      }
+      return jsonResponse({ success: true, data: result, version: result._version })
+    }
 
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: newHeaders,
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 502,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    // GET /api/user — 用户登录
+    if (method === 'GET' && path === '/api/user') {
+      const data = await readData(env)
+      return jsonResponse({ login: 'admin', valid: true, data })
+    }
+
+    return jsonResponse({ error: 'not found' }, 404)
+
+  } catch (e) {
+    console.error('API error:', e.message)
+    return jsonResponse({ error: e.message }, 500)
   }
 }
