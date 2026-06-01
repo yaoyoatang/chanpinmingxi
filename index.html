@@ -865,7 +865,7 @@ async function doLogin() {
   state.token = token
 
   try {
-    // 1. 验证Token是否有效（通过corsproxy代理）
+    // 1. 验证Token是否有效（通过Pages Functions代理）
     showLoading('验证Token…')
     const user = await ghFetch('/user')
     hideLoading()
@@ -882,7 +882,6 @@ async function doLogin() {
       if (confirm('检测到这是首次使用。\n\n点击「确定」将自动创建一个名为「' + CONFIG.repo + '」的私有仓库来存放你的数据。')) {
         showLoading('创建数据仓库…')
         await ghCreateRepo()
-        // 写入初始数据
         await ghWriteData({ products: [], config: { password: '' } })
         data = { products: [], config: { password: '' } }
         hideLoading()
@@ -896,7 +895,7 @@ async function doLogin() {
       hideLoading()
     }
 
-    // 3. 保存Token到localStorage（方便下次自动登录）
+    // 3. 保存Token到localStorage（下次自动登录，不用再输入）
     try { localStorage.setItem('pm_token', token) } catch(e) {}
 
     // 4. 加载数据并进入主页
@@ -916,11 +915,17 @@ async function doLogin() {
       }
     }
 
+    // 6. 连接成功，进入主页
     state.cloudSync = true
-    btn.disabled = false
-    btn.textContent = '连接 GitHub'
-    goPage('index', false)
-    showSyncStatus(`✅ 已连接 @${user.login}`)
+    btn.textContent = '✅ 已连接'
+    btn.style.background = '#07c160'
+    showToast('✅ 云端同步已开启')
+
+    // 延迟跳转，确保UI先更新
+    setTimeout(() => {
+      goPage('index', false)
+      showSyncStatus(`☁️ @${user.login}`)
+    }, 300)
 
   } catch (err) {
     hideLoading()
@@ -931,15 +936,27 @@ async function doLogin() {
   }
 }
 
-// 自动登录（如果有缓存的Token）
+// 自动登录（如果有缓存的Token，直接进入，无需再次输入）
 async function autoLogin() {
   const cachedToken = localStorage.getItem('pm_token')
   if (!cachedToken) return
+
+  // 显示自动连接中状态
+  const btn = document.getElementById('loginBtn')
+  if (btn) {
+    btn.textContent = '自动连接中…'
+    btn.disabled = true
+  }
 
   document.getElementById('tokenInput').value = cachedToken
   state.token = cachedToken
 
   try {
+    // 先验证Token还有效
+    const user = await ghFetch('/user')
+    if (!user || !user.login) throw new Error('Token失效')
+
+    // 读取数据
     const data = await ghReadData()
     if (data) {
       localCache = data
@@ -949,17 +966,24 @@ async function autoLogin() {
       // 密码检查
       const needPwd = state.config.password && state.config.password.length > 0
       if (needPwd) {
-        // 不在自动登录时弹密码框，让用户手动点登录
+        // 有密码时需要用户手动点连接
+        if (btn) { btn.textContent = '连接 GitHub'; btn.disabled = false }
         return
       }
 
       state.cloudSync = true
-      goPage('index', false)
-      showSyncStatus('✅ 已自动连接')
+      if (btn) { btn.textContent = '✅ 已连接'; btn.style.background = '#07c160' }
+
+      setTimeout(() => {
+        goPage('index', false)
+        showSyncStatus(`☁️ @${user.login}`)
+      }, 200)
     }
   } catch (e) {
-    // Token过期了，清除
+    // Token过期了，清除，让用户重新输入
     localStorage.removeItem('pm_token')
+    if (btn) { btn.textContent = '连接 GitHub'; btn.disabled = false }
+    document.getElementById('tokenInput').value = ''
   }
 }
 
