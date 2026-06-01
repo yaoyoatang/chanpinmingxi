@@ -446,6 +446,7 @@ a{text-decoration:none;color:inherit}
   .perm-modal{border-radius:20px;margin:0 16px;max-width:358px}
 }
 </style>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="app-container">
@@ -516,6 +517,10 @@ a{text-decoration:none;color:inherit}
       <div class="pwd-wrap">
         <input class="login-input" id="loginPassword" type="password" placeholder="密码" autocomplete="current-password" style="padding-right:40px">
         <span class="pwd-eye" onclick="togglePwd('loginPassword',this)">👁</span>
+      </div>
+      <div style="display:flex;gap:16px;margin:8px 0 4px;font-size:13px;color:var(--text-sub)">
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="rememberPwd"> 记住密码</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="autoLogin"> 自动登录</label>
       </div>
       <button class="login-btn" onclick="doAccountLogin()" id="acctLoginBtn">登 录</button>
       <div class="login-err" id="loginErr"></div>
@@ -690,12 +695,24 @@ a{text-decoration:none;color:inherit}
     <div class="manage-section-title">💾 数据管理</div>
     <div class="manage-row">
       <div><div class="manage-row-label">导出全部数据</div></div>
-      <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="exportData()">下载JSON</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="exportData()">下载JSON</button>
+        <button class="btn btn-success" style="padding:8px 16px;font-size:13px" onclick="exportExcel()">下载Excel</button>
+      </div>
     </div>
     <div class="manage-row">
       <div><div class="manage-row-label">导入数据</div></div>
       <button class="btn btn-ghost" style="padding:8px 16px;font-size:13px" onclick="document.getElementById('importFile').click()">选择文件</button>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </div>
+
+  <!-- 每周报表 -->
+  <div class="manage-section" id="weeklyReportSection">
+    <div class="manage-section-title">📊 每周报表</div>
+    <div class="manage-row">
+      <div><div class="manage-row-label">每周进货统计</div><div class="manage-row-sub">按周汇总进货总量与总价</div></div>
+      <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="showWeeklyReport()">查看报表</button>
     </div>
   </div>
 
@@ -851,6 +868,15 @@ function simpleHash(str) {
     hash |= 0
   }
   return 'h_' + Math.abs(hash).toString(36)
+}
+
+// Unicode 字符串转 base64（支持中文）
+function utoa(str) {
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode('0x' + p1)))
+}
+// base64 转 Unicode 字符串
+function atou(str) {
+  return decodeURIComponent(Array.from(atob(str)).map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join(''))
 }
 
 function isCurrentUserAdmin() {
@@ -1170,6 +1196,26 @@ async function doAccountLogin() {
 
   // 保存登录状态
   try { localStorage.setItem('pm_last_user', username) } catch(e) {}
+  
+  // 记住密码 / 自动登录
+  const rememberPwd = document.getElementById('rememberPwd').checked
+  const autoLogin = document.getElementById('autoLogin').checked
+  try {
+    if (autoLogin) {
+      // 自动登录必须记住密码
+      localStorage.setItem('pm_remember_user', username)
+      localStorage.setItem('pm_remember_pwd', utoa(password))
+      localStorage.setItem('pm_auto_login', '1')
+    } else if (rememberPwd) {
+      localStorage.setItem('pm_remember_user', username)
+      localStorage.setItem('pm_remember_pwd', utoa(password))
+      localStorage.removeItem('pm_auto_login')
+    } else {
+      localStorage.removeItem('pm_remember_user')
+      localStorage.removeItem('pm_remember_pwd')
+      localStorage.removeItem('pm_auto_login')
+    }
+  } catch(e) {}
 
   // 全局密码检查
   if (state.config.password && !isCurrentUserAdmin()) {
@@ -1609,40 +1655,69 @@ async function doRegister() {
 
 // ==================== 自动登录 ====================
 async function autoLogin() {
-  // 1. 检查上次登录的用户名（账号登录优先）
-  const lastUser = localStorage.getItem('pm_last_user')
-  if (lastUser) {
-    // 尝试直接连接云端（FC 后端不需要 Token）
-    try {
-      const cloudData = await apiFetch('/api/data')
-      state.cloudSync = true
-      // 查找上次登录的用户
-      const users = Array.isArray(cloudData.users) ? cloudData.users : []
-      const user = users.find(u => u.username === lastUser)
-      if (user) {
-        applyData(cloudData)
-        saveLocalCache(cloudData)
-        state.currentUser = user
-        document.getElementById('acctLoginBtn').textContent = '✅ 自动登录中'
-        setTimeout(() => {
+  // 0. 自动登录：用保存的凭据静默登录
+  const autoLoginFlag = localStorage.getItem('pm_auto_login')
+  if (autoLoginFlag === '1') {
+    const savedUser = localStorage.getItem('pm_remember_user')
+    const savedPwd = localStorage.getItem('pm_remember_pwd')
+    if (savedUser && savedPwd) {
+      try {
+        const password = atou(savedPwd)
+        showLoading('自动登录中…')
+        // 尝试云端登录
+        let foundUser = null
+        let loginData = null
+        try {
+          const cloudData = await apiFetch('/api/data')
+          state.cloudSync = true
+          foundUser = (cloudData.users || []).find(u => u.username === savedUser && u.password === simpleHash(password))
+          loginData = cloudData
+        } catch(e) {
+          // 云端失败，试本地
+          const localData = getLocalData()
+          foundUser = (localData.users || []).find(u => u.username === savedUser && u.password === simpleHash(password))
+          loginData = localData
+          state.cloudSync = false
+        }
+        if (foundUser) {
+          hideLoading()
+          state.currentUser = foundUser
+          applyData(loginData)
+          saveLocalCache(loginData)
           goPage('index', false)
-          showSyncStatus(`☁️ ${user.name || user.username}`)
-        }, 300)
-        return
+          showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
+          return
+        }
+        hideLoading()
+        // 自动登录失败，清除自动登录标记
+        localStorage.removeItem('pm_auto_login')
+      } catch(e) {
+        hideLoading()
+        localStorage.removeItem('pm_auto_login')
       }
-    } catch(e) {
-      // 云端连不上，继续走本地模式
     }
   }
 
-  // 2. 检查纯本地模式的用户
+  // 1. 记住密码：预填充用户名和密码
+  const rememberUser = localStorage.getItem('pm_remember_user')
+  if (rememberUser) {
+    document.getElementById('loginUsername').value = rememberUser
+    const rememberPwd = localStorage.getItem('pm_remember_pwd')
+    if (rememberPwd) {
+      try { document.getElementById('loginPassword').value = atou(rememberPwd) } catch(e) {}
+    }
+    document.getElementById('rememberPwd').checked = true
+    document.getElementById('autoLogin').checked = (localStorage.getItem('pm_auto_login') === '1')
+    document.getElementById('loginPassword').focus()
+  }
+
+  // 2. 检查纯本地模式的用户（原有逻辑）
   const localData = getLocalData()
   if (localData.users && localData.users.length > 0) {
     const admin = localData.users.find(u => u.role === 'admin')
     if (admin) {
       state.currentUser = admin
       applyData(localData)
-      // 不自动进入，让用户手动点登录
     }
   }
 }
@@ -1653,6 +1728,8 @@ function doLogout() {
   localStorage.removeItem('pm_token')
   localStorage.removeItem('pm_last_user')
   localStorage.removeItem('pm_cache')
+  localStorage.removeItem('pm_auto_login')
+  localStorage.removeItem('pm_remember_pwd')
   state.token = ''
   state.currentUser = null
   state.products = []
@@ -2285,6 +2362,103 @@ async function setUserAdmin(userId) {
     renderUserList()
     showToast('✅ 已设为管理员')
   }
+}
+
+// ==================== Excel导出 ====================
+function exportExcel() {
+  if (!state.products || !state.products.length) { showToast('没有产品数据'); return }
+  const rows = state.products.map(p => ({
+    '型号': p.model || '',
+    '品牌': p.brand || '',
+    '进价(元)': p.price || 0,
+    '卖价(元)': p.sell || 0,
+    '库存': p.quantity || 0,
+    '已售': p.sold_count || 0,
+    '利润': p.profit || 0,
+    '创建时间': p.create_time || '',
+  }))
+  const ws = XLSX.utils.json_to_sheet(rows)
+  // 设置列宽
+  ws['!cols'] = [
+    { wch: 24 }, // 型号
+    { wch: 12 }, // 品牌
+    { wch: 10 }, // 进价
+    { wch: 10 }, // 卖价
+    { wch: 8 },  // 库存
+    { wch: 8 },  // 已售
+    { wch: 10 }, // 利润
+    { wch: 20 }, // 创建时间
+  ]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '产品数据')
+  const now = new Date()
+  const fileName = `产品数据_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}.xlsx`
+  XLSX.writeFile(wb, fileName)
+}
+
+// ==================== 每周报表 ====================
+function showWeeklyReport() {
+  if (!state.products || !state.products.length) { showToast('没有产品数据'); return }
+  // 按周分组
+  const weekMap = {}
+  state.products.forEach(p => {
+    if (!p.create_time) return
+    const d = new Date(p.create_time)
+    if (isNaN(d)) return
+    // 计算ISO周（周一为一周开始）
+    const day = d.getDay()
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+    const monday = new Date(d)
+    monday.setDate(diff)
+    monday.setHours(0,0,0,0)
+    const key = monday.toISOString().slice(0,10) // YYYY-MM-DD（周一日期）
+    if (!weekMap[key]) weekMap[key] = { weekStart: key, count: 0, totalQty: 0, totalValue: 0, products: [] }
+    const originQty = (p.quantity || 0) + (p.sold_count || 0)
+    weekMap[key].count++
+    weekMap[key].totalQty += originQty
+    weekMap[key].totalValue += (p.price || 0) * originQty
+    weekMap[key].products.push(p.model || '')
+  })
+  const weeks = Object.values(weekMap).sort((a,b) => b.weekStart.localeCompare(a.weekStart))
+  if (!weeks.length) { showToast('没有按周统计的数据'); return }
+  // 生成报表HTML
+  let html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>每周进货报表</title>
+  <style>
+    body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;padding:20px;background:#f5f6fa;color:#1a1a2e}
+    h2{text-align:center;margin-bottom:20px;color:#2E7D32}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    th{background:#2E7D32;color:#fff;padding:10px 12px;text-align:left;font-size:13px}
+    td{padding:9px 12px;border-bottom:1px solid #eee;font-size:13px}
+    tr:last-child td{border-bottom:none}
+    .num{text-align:right;font-family:'Courier New',monospace}
+    .total-row{background:#e8f5e9;font-weight:700}
+    .week-header{background:#c8e6c9;font-weight:600;color:#1b5e20}
+  </style></head><body>
+  <h2>📊 每周进货报表</h2>
+  <p style="text-align:center;color:#666;margin-bottom:16px;font-size:13px">生成时间：${new Date().toLocaleString('zh-CN')}</p>`
+  let grandTotalQty = 0, grandTotalValue = 0
+  weeks.forEach(w => {
+    html += `<table style="margin-bottom:20px">
+      <tr class="week-header"><td colspan="4">📅 周期：${w.weekStart} ~ ${new Date(new Date(w.weekStart).getTime()+6*8640000).toISOString().slice(0,10)}（共 ${w.count} 款产品）</td></tr>
+      <tr><th>型号</th><th>进货量</th><th>进货总价(元)</th><th>详情</th></tr>`
+    w.products.forEach((model, i) => {
+      html += `<tr><td>${escHtml(model)}</td><td class="num">—</td><td class="num">—</td><td style="font-size:11px;color:#999">仅汇总可见</td></tr>`
+    })
+    html += `<tr class="total-row"><td>小计</td><td class="num">${w.totalQty}</td><td class="num">¥${w.totalValue.toFixed(2)}</td><td></td></tr>
+    </table>`
+    grandTotalQty += w.totalQty
+    grandTotalValue += w.totalValue
+  })
+  html += `<table>
+    <tr class="total-row" style="background:#2E7D32;color:#fff"><td>总计（${weeks.length} 周）</td><td class="num">${grandTotalQty}</td><td class="num">¥${grandTotalValue.toFixed(2)}</td><td></td></tr>
+  </table>
+  <div style="text-align:center;margin-top:20px">
+    <button onclick="window.print()" style="padding:10px 24px;background:#2E7D32;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">🖨️ 打印报表</button>
+  </div>
+  </body></html>`
+  const win = window.open('', '_blank')
+  win.document.write(html)
+  win.document.close()
 }
 
 // ==================== 初始化 ====================
