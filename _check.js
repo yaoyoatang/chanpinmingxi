@@ -36,6 +36,20 @@ function showToast(msg, duration = 2000) {
   setTimeout(() => t.classList.remove('show'), duration)
 }
 
+function togglePwd(inputId, eyeEl) {
+  const input = document.getElementById(inputId)
+  if (!input) return
+  if (input.type === 'password') {
+    input.type = 'text'
+    eyeEl.textContent = '🙈'
+    eyeEl.style.opacity = '1'
+  } else {
+    input.type = 'password'
+    eyeEl.textContent = '👁'
+    eyeEl.style.opacity = ''
+  }
+}
+
 function showSyncStatus(text, duration = 1500) {
   const el = document.getElementById('syncStatus')
   el.textContent = text
@@ -366,34 +380,38 @@ async function doAccountLogin() {
   btn.textContent = '登录中…'
   errEl.style.display = 'none'
 
-  // 先尝试本地模式（从localStorage读取用户数据）
   showLoading('验证账号…')
   let success = false
-  let needCloud = false
+  let foundUser = null
 
   // 先检查本地缓存有没有用户
   const localData = getLocalData()
-  const user = findUser(localData.users, username, password)
+  foundUser = findUser(localData.users, username, password)
 
-  if (user) {
+  if (foundUser) {
     success = true
-    // 检查是否有缓存的Token可以做云端同步
-    const cachedToken = localStorage.getItem('pm_token')
-    if (cachedToken && user.role === 'admin') {
-      state.token = cachedToken
-      // 尝试验证Token
-      try {
-        await ghFetch('/user')
-        state.cloudSync = true
-      } catch(e) {
-        // Token失效了，继续本地模式
-        state.cloudSync = false
+  }
+
+  // 本地没找到 → 尝试云端（如果有缓存的Token）
+  const cachedToken = localStorage.getItem('pm_token')
+  if (!success && cachedToken) {
+    state.token = cachedToken
+    try {
+      await ghFetch('/user')  // 验证Token是否有效
+      state.cloudSync = true
+      const cloudData = await ghReadData()
+      foundUser = findUser(cloudData.users, username, password)
+      if (foundUser) {
+        success = true
+        saveLocalCache(cloudData)  // 缓存到本地，下次不用再拉
       }
+    } catch(e) {
+      // Token无效或网络不通
+      state.cloudSync = false
     }
   }
 
-  if (!success && localData.pm_cloud_ready !== true) {
-    // 本地没找到用户，也没有云标记，说明是纯本地模式
+  if (!success) {
     hideLoading()
     errEl.textContent = '用户名或密码错误'
     errEl.style.display = 'block'
@@ -402,34 +420,15 @@ async function doAccountLogin() {
     return
   }
 
-  // 如果有Token，尝试从云端拉取最新用户列表
-  if (!success && state.token) {
-    try {
-      const cloudData = await ghReadData()
-      const cloudUser = findUser(cloudData.users, username, password)
-      if (cloudUser) {
-        user = cloudUser
-        success = true
-        saveLocalCache(cloudData)
-      }
-    } catch(e) {
-      // 云端拉取失败，继续
-    }
-  }
-
-  hideLoading()
-
-  if (!success) {
-    errEl.textContent = '用户名或密码错误'
-    errEl.style.display = 'block'
-    btn.disabled = false
-    btn.textContent = '登 录'
-    return
-  }
-
   // 登录成功
-  state.currentUser = user
-  applyData(localData)
+  state.currentUser = foundUser
+  applyData(localData.users.length > 0 ? localData : getLocalData())
+
+  // 如果是管理员且有Token，保持云端连接
+  if (!state.cloudSync && cachedToken && foundUser.role === 'admin') {
+    state.token = cachedToken
+    try { await ghFetch('/user'); state.cloudSync = true } catch(e) {}
+  }
 
   // 保存登录状态
   try { localStorage.setItem('pm_last_user', username) } catch(e) {}
@@ -445,10 +444,10 @@ async function doAccountLogin() {
     }
   }
 
-  showToast(`✅ 欢迎，${user.name || user.username}`)
+  showToast(`✅ 欢迎，${foundUser.name || foundUser.username}`)
   setTimeout(() => {
     goPage('index', false)
-    showSyncStatus(state.cloudSync ? `☁️ ${user.name || user.username}` : `📱 ${user.name || user.username}`)
+    showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
   }, 200)
 }
 

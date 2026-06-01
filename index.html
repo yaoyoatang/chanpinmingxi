@@ -422,6 +422,15 @@ a{text-decoration:none;color:inherit}
 }
 .sync-status.show{opacity:1}
 
+/* ===== 密码小眼睛 ===== */
+.pwd-wrap{position:relative}
+.pwd-eye{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  cursor:pointer;font-size:17px;user-select:none;opacity:.5;transition:opacity .2s;
+  line-height:1;
+}
+.pwd-eye:hover,.pwd-eye:active{opacity:1}
+
 /* ===== 响应式（桌面端） ===== */
 @media(min-width:600px){
   body{display:flex;justify-content:center;background:#e8ecf0}
@@ -504,7 +513,10 @@ a{text-decoration:none;color:inherit}
     <!-- 账号登录 -->
     <div id="loginAccountPanel">
       <input class="login-input" id="loginUsername" placeholder="用户名" autocomplete="username">
-      <input class="login-input" id="loginPassword" type="password" placeholder="密码" autocomplete="current-password">
+      <div class="pwd-wrap">
+        <input class="login-input" id="loginPassword" type="password" placeholder="密码" autocomplete="current-password" style="padding-right:40px">
+        <span class="pwd-eye" onclick="togglePwd('loginPassword',this)">👁</span>
+      </div>
       <button class="login-btn" onclick="doAccountLogin()" id="acctLoginBtn">登 录</button>
       <div class="login-err" id="loginErr"></div>
       <div class="login-link" onclick="goPage('register')">没有账号？通过邀请码注册 →</div>
@@ -535,7 +547,10 @@ a{text-decoration:none;color:inherit}
     <div class="register-sub">请输入管理员分享的邀请码完成注册</div>
     <input class="login-input" id="regInviteCode" placeholder="邀请码（6位字母数字）" style="letter-spacing:3px;text-transform:uppercase;font-weight:600">
     <input class="login-input" id="regUsername" placeholder="设置用户名（英文/数字）">
-    <input class="login-input" id="regPassword" type="password" placeholder="设置密码">
+    <div class="pwd-wrap">
+      <input class="login-input" id="regPassword" type="password" placeholder="设置密码" style="padding-right:40px">
+      <span class="pwd-eye" onclick="togglePwd('regPassword',this)">👁</span>
+    </div>
     <input class="login-input" id="regName" placeholder="你的名字（如：张三）">
     <button class="login-btn login-btn-green" onclick="doRegister()" id="regBtn">注 册</button>
     <div class="login-err" id="regErr"></div>
@@ -692,7 +707,10 @@ a{text-decoration:none;color:inherit}
       <button class="btn btn-ghost" style="padding:8px 16px;font-size:13px" onclick="showChangePwdUI()">修改</button>
     </div>
     <div id="changePwdArea" style="display:none;padding:10px 0">
-      <input class="form-input" id="newPwdInput" type="password" placeholder="新密码" style="margin-bottom:8px">
+      <div class="pwd-wrap" style="margin-bottom:8px">
+        <input class="form-input" id="newPwdInput" type="password" placeholder="新密码" style="width:100%;padding-right:40px;box-sizing:border-box">
+        <span class="pwd-eye" onclick="togglePwd('newPwdInput',this)">👁</span>
+      </div>
       <button class="btn btn-primary" style="width:100%;padding:10px" onclick="changeMyPassword()">确认修改</button>
     </div>
   </div>
@@ -763,6 +781,20 @@ function showToast(msg, duration = 2000) {
   t.textContent = msg
   t.classList.add('show')
   setTimeout(() => t.classList.remove('show'), duration)
+}
+
+function togglePwd(inputId, eyeEl) {
+  const input = document.getElementById(inputId)
+  if (!input) return
+  if (input.type === 'password') {
+    input.type = 'text'
+    eyeEl.textContent = '🙈'
+    eyeEl.style.opacity = '1'
+  } else {
+    input.type = 'password'
+    eyeEl.textContent = '👁'
+    eyeEl.style.opacity = ''
+  }
 }
 
 function showSyncStatus(text, duration = 1500) {
@@ -1095,34 +1127,38 @@ async function doAccountLogin() {
   btn.textContent = '登录中…'
   errEl.style.display = 'none'
 
-  // 先尝试本地模式（从localStorage读取用户数据）
   showLoading('验证账号…')
   let success = false
-  let needCloud = false
+  let foundUser = null
 
   // 先检查本地缓存有没有用户
   const localData = getLocalData()
-  const user = findUser(localData.users, username, password)
+  foundUser = findUser(localData.users, username, password)
 
-  if (user) {
+  if (foundUser) {
     success = true
-    // 检查是否有缓存的Token可以做云端同步
-    const cachedToken = localStorage.getItem('pm_token')
-    if (cachedToken && user.role === 'admin') {
-      state.token = cachedToken
-      // 尝试验证Token
-      try {
-        await ghFetch('/user')
-        state.cloudSync = true
-      } catch(e) {
-        // Token失效了，继续本地模式
-        state.cloudSync = false
+  }
+
+  // 本地没找到 → 尝试云端（如果有缓存的Token）
+  const cachedToken = localStorage.getItem('pm_token')
+  if (!success && cachedToken) {
+    state.token = cachedToken
+    try {
+      await ghFetch('/user')  // 验证Token是否有效
+      state.cloudSync = true
+      const cloudData = await ghReadData()
+      foundUser = findUser(cloudData.users, username, password)
+      if (foundUser) {
+        success = true
+        saveLocalCache(cloudData)  // 缓存到本地，下次不用再拉
       }
+    } catch(e) {
+      // Token无效或网络不通
+      state.cloudSync = false
     }
   }
 
-  if (!success && localData.pm_cloud_ready !== true) {
-    // 本地没找到用户，也没有云标记，说明是纯本地模式
+  if (!success) {
     hideLoading()
     errEl.textContent = '用户名或密码错误'
     errEl.style.display = 'block'
@@ -1131,34 +1167,15 @@ async function doAccountLogin() {
     return
   }
 
-  // 如果有Token，尝试从云端拉取最新用户列表
-  if (!success && state.token) {
-    try {
-      const cloudData = await ghReadData()
-      const cloudUser = findUser(cloudData.users, username, password)
-      if (cloudUser) {
-        user = cloudUser
-        success = true
-        saveLocalCache(cloudData)
-      }
-    } catch(e) {
-      // 云端拉取失败，继续
-    }
-  }
-
-  hideLoading()
-
-  if (!success) {
-    errEl.textContent = '用户名或密码错误'
-    errEl.style.display = 'block'
-    btn.disabled = false
-    btn.textContent = '登 录'
-    return
-  }
-
   // 登录成功
-  state.currentUser = user
-  applyData(localData)
+  state.currentUser = foundUser
+  applyData(localData.users.length > 0 ? localData : getLocalData())
+
+  // 如果是管理员且有Token，保持云端连接
+  if (!state.cloudSync && cachedToken && foundUser.role === 'admin') {
+    state.token = cachedToken
+    try { await ghFetch('/user'); state.cloudSync = true } catch(e) {}
+  }
 
   // 保存登录状态
   try { localStorage.setItem('pm_last_user', username) } catch(e) {}
@@ -1174,10 +1191,10 @@ async function doAccountLogin() {
     }
   }
 
-  showToast(`✅ 欢迎，${user.name || user.username}`)
+  showToast(`✅ 欢迎，${foundUser.name || foundUser.username}`)
   setTimeout(() => {
     goPage('index', false)
-    showSyncStatus(state.cloudSync ? `☁️ ${user.name || user.username}` : `📱 ${user.name || user.username}`)
+    showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
   }, 200)
 }
 
