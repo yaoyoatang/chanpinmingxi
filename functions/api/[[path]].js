@@ -99,19 +99,42 @@ export async function onRequest(context) {
       return jsonResponse({ success: true, version: body._version })
     }
 
-    // POST /api/sync — 同步数据
+    // POST /api/sync — 同步数据（合并而非覆盖）
     if (method === 'POST' && path === '/api/sync') {
       const sd = await request.json()
       const cloud = await readData(env)
-      const cv = cloud._version || 0
-      const lv = sd._version || 0
-      let result = cloud
-      if (lv >= cv) {
-        sd._version = cv + 1
-        sd._updatedAt = new Date().toISOString()
-        await env.DATA_KV.put(DATA_KEY, JSON.stringify(sd))
-        result = sd
+
+      // 产品：以id为key合并，客户端优先（因为客户端有最新操作）
+      const productMap = {}
+      ;(cloud.products || []).forEach(p => { productMap[p.id] = p })
+      ;(sd.products || []).forEach(p => { productMap[p.id] = p })  // 客户端优先
+      const mergedProducts = Object.values(productMap)
+
+      // 用户：以id为key合并
+      const userMap = {}
+      ;(cloud.users || []).forEach(u => { userMap[u.id] = u })
+      ;(sd.users || []).forEach(u => { userMap[u.id] = u })
+      const mergedUsers = Object.values(userMap)
+
+      // 邀请码：以code为key合并
+      const inviteMap = {}
+      ;(cloud.invites || []).forEach(i => { inviteMap[i.code] = i })
+      ;(sd.invites || []).forEach(i => { inviteMap[i.code] = i })
+      const mergedInvites = Object.values(inviteMap)
+
+      // 配置：深度合并
+      const mergedConfig = { ...(cloud.config || {}), ...(sd.config || {}) }
+
+      const result = {
+        products: mergedProducts,
+        users: mergedUsers,
+        invites: mergedInvites,
+        config: mergedConfig,
+        _version: (cloud._version || 0) + 1,
+        _updatedAt: new Date().toISOString()
       }
+
+      await env.DATA_KV.put(DATA_KEY, JSON.stringify(result))
       return jsonResponse({ success: true, data: result, version: result._version })
     }
 

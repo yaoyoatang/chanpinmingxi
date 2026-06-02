@@ -1033,26 +1033,27 @@ async function pushData() {
   const data = collectData()
   saveLocalCache(data)
 
-  // 没开启云端同步时只存本地
-  if (!state.cloudSync) {
-    state.pendingCount = Math.max(1, (state.pendingCount || 0) + 1)
-    showSyncStatus('💾 已保存（本地）')
-    updateSyncUI()
-    return true
-  }
-
+  // 始终尝试同步到云端（不依赖 cloudSync 标志）
   showSyncStatus('正在同步…')
   try {
-    // 先拉最新的sha，避免冲突
     let latestData = null
     try {
       latestData = await readCloudData()
+      state.cloudSync = true
     } catch(e) {
-      // 拉取失败继续用旧sha尝试写
+      // 云端不可用，仅本地保存
     }
+
     if (latestData) {
-      // 合并：本地产品优先（最新操作），用户/邀请码合并
-      data.products = data.products || []
+      // 合并：以id为key去重合并，避免互相覆盖
+      // 产品：合并（本地优先）
+      const localProducts = Array.isArray(data.products) ? data.products : []
+      const cloudProducts = Array.isArray(latestData.products) ? latestData.products : []
+      const productMap = {}
+      cloudProducts.forEach(p => { productMap[p.id] = p })
+      localProducts.forEach(p => { productMap[p.id] = p })  // 本地优先
+      data.products = Object.values(productMap).sort((a,b) => (b.create_time||'').localeCompare(a.create_time||''))
+      // 用户：合并
       const latestUsers = Array.isArray(latestData.users) ? latestData.users : []
       const localUsers = Array.isArray(data.users) ? data.users : []
       data.users = mergeUsers(latestUsers, localUsers)
@@ -1063,6 +1064,8 @@ async function pushData() {
       latestInvites.forEach(i => { inviteMap[i.code] = i })
       localInvites.forEach(i => { inviteMap[i.code] = i })  // 本地优先，覆盖云端同code
       data.invites = Object.values(inviteMap)
+      // 配置：合并
+      if (latestData.config) data.config = { ...data.config, ...latestData.config }
       applyData(data)
       saveLocalCache(data)
     }
@@ -1264,16 +1267,55 @@ async function doAccountLogin() {
   goPage('index', false)
   showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
 
-  // 管理员登录后，后台尝试连接云端（FC 后端不需要 Token）
-  if (!state.cloudSync && (foundUser.role === 'admin' || foundUser.role === 'super_admin')) {
-    apiFetch('/api/data').then(() => {
+  // 登录成功后 — 所有用户都自动从云端拉最新数据（保证数据一致）
+  if (state.cloudSync) {
+    // 已经是云端模式，后台拉最新合并
+    pullLatestCloudData()
+  } else {
+    // 还没连上云端，尝试连接
+    apiFetch('/api/data').then(async () => {
       state.cloudSync = true
       showSyncStatus(`☁️ ${foundUser.name || foundUser.username}`)
-      showToast('☁️ 云端连接成功')
+      await pullLatestCloudData()
+      showToast('☁️ 云端已连接，数据已同步')
       updateSyncUI()
-    }).catch(() => {
-      // 云端连不上，保持本地模式
-    })
+    }).catch(() => {})
+  }
+}
+
+// 从云端拉取最新数据并合并到本地（不覆盖本地未同步的修改）
+async function pullLatestCloudData() {
+  try {
+    const latest = await readCloudData()
+    if (!latest) return
+    const local = collectData()
+    // 产品：合并去重（以id为key）
+    const productMap = {}
+    ;(latest.products || []).forEach(p => { productMap[p.id] = p })
+    ;(local.products || []).forEach(p => { productMap[p.id] = p })  // 本地优先
+    state.products = Object.values(productMap).sort((a,b) => (b.create_time||'').localeCompare(a.create_time||''))
+    // 用户：合并
+    const latestUsers = Array.isArray(latest.users) ? latest.users : []
+    const localUsers = Array.isArray(local.users) ? local.users : []
+    state.users = mergeUsers(latestUsers, localUsers)
+    // 邀请码：合并
+    const latestInvites = Array.isArray(latest.invites) ? latest.invites : []
+    const localInvites = Array.isArray(local.invites) ? local.invites : []
+    const inviteMap = {}
+    latestInvites.forEach(i => { inviteMap[i.code] = i })
+    localInvites.forEach(i => { inviteMap[i.code] = i })
+    state.invites = Object.values(inviteMap)
+    // 配置：云端优先
+    if (latest.config) state.config = { ...state.config, ...latest.config }
+    applyData(collectData())
+    saveLocalCache(collectData())
+    // 刷新UI
+    renderProductList()
+    renderUserList()
+    renderActiveInvite()
+    console.log('[自动同步] 已从云端拉取最新数据')
+  } catch(e) {
+    console.warn('[自动同步] 拉取失败:', e.message)
   }
 }
 
@@ -1418,6 +1460,8 @@ async function doTokenLogin() {
     setTimeout(() => {
       goPage('index', false)
       showSyncStatus(`☁️ @${apiUser.login}`)
+      // 云端登录成功后同步最新数据
+      pullLatestCloudData()
     }, 300)
 
   } catch (err) {
@@ -1499,6 +1543,8 @@ async function doManualSync() {
     saveLocalCache(finalData)
     state.pendingCount = 0
     renderProductList()
+    renderUserList()
+    renderActiveInvite()
     showSyncStatus('✅ 已同步到云端')
     showToast('✅ 数据已同步到云端')
   } catch (err) {
@@ -1691,6 +1737,8 @@ async function doRegister() {
     state.currentUser = newUser
     goPage('index', false)
     showSyncStatus(state.cloudSync ? `☁️ ${name}` : `📱 ${name}`)
+    // 注册后也自动同步最新数据
+    if (state.cloudSync) pullLatestCloudData()
   }, 800)
 }
 
@@ -1727,6 +1775,8 @@ async function autoLogin() {
           saveLocalCache(loginData)
           goPage('index', false)
           showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
+          // 自动登录成功后也同步最新数据
+          if (state.cloudSync) pullLatestCloudData()
           return
         }
         hideLoading()
@@ -2592,6 +2642,17 @@ function showWeeklyReport() {
 
 // ==================== 初始化 ====================
 autoLogin()
+
+// 页面从后台切回前台时，自动同步最新数据（间隔>30秒才触发，避免频繁请求）
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && state.currentUser && state.cloudSync) {
+    const now = Date.now()
+    if (!state._lastAutoPull || now - state._lastAutoPull > 30000) {
+      state._lastAutoPull = now
+      pullLatestCloudData()
+    }
+  }
+})
 </script>
 </body>
 </html>
