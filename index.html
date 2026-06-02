@@ -760,16 +760,24 @@ a{text-decoration:none;color:inherit}
       <button class="btn btn-primary" style="width:100%;padding:10px" onclick="changeMyPassword()">确认修改</button>
     </div>
 
-    <!-- 安全设置（仅超级管理员可见） -->
+    <!-- 用户与权限管理（管理员及以上可见） -->
     <div id="securityAdminArea" style="display:none;border-top:1px solid var(--bg);padding-top:10px;margin-top:4px">
-      <div class="manage-row-label" style="margin-bottom:8px;font-size:13px">⚡ 高级安全设置</div>
-      <div class="manage-row">
-        <div><div class="manage-row-label">用户管理入口</div><div class="manage-row-sub">查看和管理所有用户账号</div></div>
-        <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="goPage('users')">进入</button>
+      <div class="manage-row-label" style="margin-bottom:8px;font-size:13px">👥 注册用户管理</div>
+
+      <!-- 用户概览列表 -->
+      <div id="securityUserList" style="margin-bottom:10px"></div>
+
+      <!-- 操作按钮 -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" style="padding:8px 16px;font-size:13px;flex:1;min-width:120px" onclick="goPage('users')">用户权限管理</button>
+        <button id="securityInviteBtn" class="btn btn-success" style="padding:8px 16px;font-size:13px;flex:1;min-width:120px" onclick="goPage('manage');setTimeout(()=>document.getElementById('inviteSection').scrollIntoView({behavior:'smooth'}),300)">邀请码管理</button>
       </div>
-      <div class="manage-row">
-        <div><div class="manage-row-label">邀请码管理</div><div class="manage-row-sub">生成和管理注册邀请码</div></div>
-        <button class="btn btn-success" style="padding:8px 16px;font-size:13px" onclick="goPage('manage');setTimeout(()=>document.getElementById('inviteSection').scrollIntoView({behavior:'smooth'}),300)">管理</button>
+
+      <!-- 超级管理员专属：角色调整 -->
+      <div id="securitySuperArea" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+        <div class="manage-row-label" style="font-size:12px;color:var(--text-sub)">⚡ 超级管理员专属</div>
+        <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px">可调整任意用户为管理员或超级管理员</div>
+        <button class="btn btn-ghost" style="padding:8px 16px;font-size:12px" onclick="goPage('users')">进入用户管理</button>
       </div>
     </div>
   </div>
@@ -838,6 +846,7 @@ const state = {
   editingUserId: null,   // 正在编辑权限的用户ID
   _lastAutoPull: 0,      // 上次自动拉取时间戳
   _autoPollTimer: null,  // 定时轮询定时器
+  _deletedProductIds: new Set(),  // 已删除产品ID集合（防止合并时被云端旧数据恢复）
 }
 
 // ==================== 工具函数 ====================
@@ -1076,12 +1085,12 @@ async function pushData() {
 
     if (latestData) {
       // 合并：以id为key去重合并，避免互相覆盖
-      // 产品：合并（本地优先）
+      // 产品：合并（本地优先），排除已删除的
       const localProducts = Array.isArray(data.products) ? data.products : []
       const cloudProducts = Array.isArray(latestData.products) ? latestData.products : []
       const productMap = {}
-      cloudProducts.forEach(p => { productMap[p.id] = p })
-      localProducts.forEach(p => { productMap[p.id] = p })  // 本地优先
+      cloudProducts.forEach(p => { if (!state._deletedProductIds.has(p.id)) productMap[p.id] = p })
+      localProducts.forEach(p => { if (!state._deletedProductIds.has(p.id)) productMap[p.id] = p })  // 本地优先
       data.products = Object.values(productMap).sort((a,b) => (b.create_time||'').localeCompare(a.create_time||''))
       // 用户：合并
       const latestUsers = Array.isArray(latestData.users) ? latestData.users : []
@@ -1322,10 +1331,10 @@ async function pullLatestCloudData() {
     const latest = await readCloudData()
     if (!latest) return
     const local = collectData()
-    // 产品：合并去重（以id为key）
+    // 产品：合并去重（以id为key），排除已删除的
     const productMap = {}
-    ;(latest.products || []).forEach(p => { productMap[p.id] = p })
-    ;(local.products || []).forEach(p => { productMap[p.id] = p })  // 本地优先
+    ;(latest.products || []).forEach(p => { if (!state._deletedProductIds.has(p.id)) productMap[p.id] = p })
+    ;(local.products || []).forEach(p => { if (!state._deletedProductIds.has(p.id)) productMap[p.id] = p })  // 本地优先
     state.products = Object.values(productMap).sort((a,b) => (b.create_time||'').localeCompare(a.create_time||''))
     // 用户：合并
     const latestUsers = Array.isArray(latest.users) ? latest.users : []
@@ -1346,6 +1355,7 @@ async function pullLatestCloudData() {
     renderProductList()
     renderUserList()
     renderActiveInvite()
+    renderSecurityUserList()
     console.log('[自动同步] 已从云端拉取最新数据')
   } catch(e) {
     console.warn('[自动同步] 拉取失败:', e.message)
@@ -1854,12 +1864,14 @@ function doLogout() {
   localStorage.removeItem('pm_cache')
   localStorage.removeItem('pm_auto_login')
   localStorage.removeItem('pm_remember_pwd')
+  localStorage.removeItem('pm_deleted_ids')  // 清除已删除ID追踪
   state.token = ''
   state.currentUser = null
   state.products = []
   state.config = {}
   state.users = []
   state.invites = []
+  state._deletedProductIds = new Set()
   state.pageStack = []
   state.dataSha = ''
   state.cloudSync = false
@@ -1922,6 +1934,11 @@ function smartSearch(product, keyword) {
 
 function getFilteredProducts() {
   let list = [...state.products]
+
+  // 过滤已删除的产品
+  if (state._deletedProductIds && state._deletedProductIds.size > 0) {
+    list = list.filter(p => !state._deletedProductIds.has(p.id))
+  }
 
   // 权限过滤：品牌
   if (!hasPermission('canViewAll')) {
@@ -2047,11 +2064,29 @@ function goEditProduct() {
 
 async function deleteProduct(id) {
   if (!confirm('确定删除这个产品吗？')) return
+  // 记录已删除ID，防止合并时被云端旧数据恢复
+  state._deletedProductIds.add(id)
+  persistDeletedIds()
   state.products = state.products.filter(p => p.id !== id)
   await pushData()
   showToast('已删除')
   goBack()
   renderProductList()
+}
+
+// 持久化已删除产品ID到本地存储
+function persistDeletedIds() {
+  try {
+    localStorage.setItem('pm_deleted_ids', JSON.stringify([...state._deletedProductIds]))
+  } catch(e) {}
+}
+
+// 从本地存储恢复已删除产品ID
+function restoreDeletedIds() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('pm_deleted_ids') || '[]')
+    state._deletedProductIds = new Set(saved)
+  } catch(e) { state._deletedProductIds = new Set() }
 }
 
 // ==================== 标记卖出 ====================
@@ -2285,9 +2320,60 @@ function loadManageConfig() {
     }
   }
 
-  // 高级安全设置：仅超级管理员可见
+  // 用户管理区域：管理员和超级管理员可见
   const adminArea = document.getElementById('securityAdminArea')
-  if (adminArea) adminArea.style.display = isCurrentUserSuperAdmin() ? '' : 'none'
+  const superArea = document.getElementById('securitySuperArea')
+  const inviteBtn = document.getElementById('securityInviteBtn')
+
+  if (adminArea) adminArea.style.display = isCurrentUserAdmin() ? '' : 'none'
+  if (superArea) superArea.style.display = isCurrentUserSuperAdmin() ? '' : 'none'
+  // 邀请码按钮：仅管理员可见（成员不可生成邀请码）
+  if (inviteBtn) inviteBtn.style.display = isCurrentUserAdmin() ? '' : 'none'
+
+  // 填充注册用户概览列表
+  renderSecurityUserList()
+}
+
+// 在账号安全区域渲染注册用户概览
+function renderSecurityUserList() {
+  const container = document.getElementById('securityUserList')
+  if (!container) return
+
+  const users = (state.users || []).filter(u => u.id !== (state.currentUser || {}).id)
+  if (!users.length) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--text-sub);padding:8px 0;text-align:center">暂无其他注册用户</div>'
+    return
+  }
+
+  const isSuper = isCurrentUserSuperAdmin()
+
+  container.innerHTML = users.map(u => {
+    const roleText = u.role === 'super_admin' ? '超级管理员' : (u.role === 'admin' ? '管理员' : '成员')
+    const roleColor = u.role === 'super_admin' ? '#C62828' : (u.role === 'admin' ? '#E65100' : '#185FA5')
+    const statusIcon = u.status === 'disabled' ? '🚫' : '✅'
+    return `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0">
+        <span style="font-size:16px">${statusIcon}</span>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:500;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(u.name || u.username)}</div>
+          <div style="font-size:11px;color:var(--text-sub)">@${escHtml(u.username)}</div>
+        </div>
+      </div>
+      <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${roleColor}15;color:${roleColor};font-weight:500;white-space:nowrap">${roleText}</span>
+    </div>
+    `
+  }).join('')
+
+  // 底部统计
+  const totalUsers = users.length
+  const activeCount = users.filter(u => u.status !== 'disabled').length
+  const memberCount = users.filter(u => u.role === 'member').length
+  container.innerHTML += `
+    <div style="font-size:11px;color:var(--text-sub);text-align:center;padding-top:4px">
+      共 ${totalUsers} 位用户（${activeCount} 活跃 · ${memberCount} 成员）
+    </div>
+  `
 }
 
 function toggleMgField(fieldId) {
@@ -2728,6 +2814,7 @@ function stopAutoPoll() {
 }
 
 // ==================== 初始化 ====================
+restoreDeletedIds()  // 恢复已删除产品ID追踪
 autoLogin()
 
 // 页面从后台切回前台时，立即同步最新数据
