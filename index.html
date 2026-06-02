@@ -1056,7 +1056,13 @@ async function pushData() {
       const latestUsers = Array.isArray(latestData.users) ? latestData.users : []
       const localUsers = Array.isArray(data.users) ? data.users : []
       data.users = mergeUsers(latestUsers, localUsers)
-      data.invites = Array.isArray(latestData.invites) ? latestData.invites : (data.invites || [])
+      // 邀请码：合并去重（以code为key，本地新增的保留）
+      const latestInvites = Array.isArray(latestData.invites) ? latestData.invites : []
+      const localInvites = Array.isArray(data.invites) ? data.invites : []
+      const inviteMap = {}
+      latestInvites.forEach(i => { inviteMap[i.code] = i })
+      localInvites.forEach(i => { inviteMap[i.code] = i })  // 本地优先，覆盖云端同code
+      data.invites = Object.values(inviteMap)
       applyData(data)
       saveLocalCache(data)
     }
@@ -1607,8 +1613,10 @@ async function doRegister() {
     // 先尝试云端数据
     const cloudData = await readCloudData()
     data = cloudData
+    console.log('[注册] 从云端读取到数据，邀请码数量:', (data.invites || []).length)
+    ;(data.invites || []).forEach(i => console.log('  邀请码:', i.code, '状态:', i.status))
   } catch(e) {
-    // 云端不可用时退回本地
+    console.warn('[注册] 云端不可用，退回本地:', e.message)
     data = getLocalData()
   }
   hideLoading()
@@ -2206,8 +2214,13 @@ function generateInviteCode() {
   state.invites.push(invite)
   renderActiveInvite()
   showToast('🎫 邀请码：' + code)
+  console.log('[邀请码] 已生成:', code, '当前cloudSync:', state.cloudSync)
   // 自动保存
-  pushData()
+  pushData().then(() => {
+    console.log('[邀请码] 保存完成')
+  }).catch(e => {
+    console.error('[邀请码] 保存失败:', e.message)
+  })
 }
 
 async function saveManageConfig() {
