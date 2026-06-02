@@ -239,6 +239,72 @@ a{text-decoration:none;color:inherit}
 .btn-danger{background:linear-gradient(135deg,#fa5151,#d63030);color:#fff;box-shadow:0 3px 12px rgba(250,81,81,.35)}
 .btn-ghost{background:#f5f6fa;color:var(--text-main);border:1.5px solid var(--border)}
 
+/* ===== 分享按钮（产品卡片上） ===== */
+.btn-share-card{
+  position:absolute;right:12px;bottom:12px;
+  background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+  font-size:11px;padding:4px 10px;border-radius:12px;
+  border:none;cursor:pointer;font-weight:500;z-index:2;
+  box-shadow:0 2px 8px rgba(102,126,234,.35);
+  transition:transform .15s,opacity .15s;
+}
+.btn-share-card:active{transform:scale(.92)}
+.product-card:hover .btn-share-card{opacity:1}
+
+/* ===== 访客浏览页 ===== */
+#guest-page{padding-bottom:20px;background:#f5f6fa}
+#guest-detail-page{padding-bottom:40px;background:#f5f6fa}
+.guest-header{
+  text-align:center;padding:28px 16px 18px;
+  background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  color:#fff;
+}
+.guest-header-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.guest-header-sub{font-size:13px;color:rgba(255,255,255,.75)}
+.guest-product-card{
+  background:#fff;border-radius:14px;margin:12px 16px;
+  padding:14px 16px;box-shadow:var(--shadow);
+}
+.guest-card-model{
+  font-size:16px;font-weight:600;color:var(--text-main);
+  margin-bottom:6px;display:flex;align-items:center;gap:6px
+}
+.guest-card-brand{
+  display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;
+  background:#e8f0fb;color:#185FA5;font-weight:500
+}
+.guest-card-img{
+  width:100%;height:200px;object-fit:cover;border-radius:10px;
+  margin-bottom:8px;background:#f0f0f0;
+}
+.guest-detail-section{
+  padding:0 16px;margin-top:12px;
+}
+.guest-info-row{
+  display:flex;justify-content:space-between;padding:10px 0;
+  border-bottom:1px solid #f5f5f5;font-size:14px
+}
+.guest-info-key{color:var(--text-sub)}
+.guest-info-val{font-weight:500;color:var(--text-main)}
+.guest-feature-tag{
+  display:inline-block;font-size:11px;padding:3px 10px;border-radius:15px;
+  background:linear-gradient(135deg,#e8f0fb,#f0e6ff);color:#555;
+  margin:3px 4px 3px 0;font-weight:500
+}
+.guest-login-hint{
+  position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;z-index:9999
+}
+.guest-login-box{
+  background:#fff;border-radius:20px;padding:30px 24px;width:85%;max-width:340px;text-align:center
+}
+.guest-share-toast{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(0,0,0,.78);color:#fff;padding:16px 28px;border-radius:14px;
+  font-size:14px;z-index:9999;pointer-events:none;animation:fadeInOut 1.8s ease forwards
+}
+@keyframes fadeInOut{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
+
 /* ===== 添加/编辑产品页 ===== */
 #add-page{padding-bottom:80px}
 .form-wrap{padding:16px}
@@ -593,6 +659,25 @@ a{text-decoration:none;color:inherit}
   </nav>
   <div id="detailContent"></div>
   <div class="detail-actions" id="detailActions"></div>
+</div>
+
+<!-- ==================== 访客浏览页（无需登录） ==================== -->
+<div id="guest-page" class="page">
+  <nav class="navbar" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)">
+    <span class="navbar-title">🛒 产品目录</span>
+    <span class="navbar-action" onclick="showGuestLoginTip()">登录</span>
+  </nav>
+  <div id="guestContent"></div>
+</div>
+
+<!-- 访客产品详情 -->
+<div id="guest-detail-page" class="page">
+  <nav class="navbar" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)">
+    <span class="navbar-back" onclick="goGuestBack()">‹</span>
+    <span class="navbar-title">产品详情</span>
+    <span class="navbar-action" onclick="shareCurrentGuest()">📤 分享</span>
+  </nav>
+  <div id="guestDetailContent"></div>
 </div>
 
 <!-- ==================== 添加/编辑产品页 ==================== -->
@@ -1985,6 +2070,7 @@ function renderProductList() {
         ${p.sell > 0 ? `<div class="price-item"><div class="price-label">卖价</div><div class="price-value success">${fmtMoney(p.sell)}</div></div>` : ''}
         ${p.profit != null && p.profit !== 0 ? `<div class="price-item"><div class="price-label">利润</div><div class="price-value warning">${fmtMoney(p.profit)}</div></div>` : ''}
       </div>` : ''}
+      <button class="btn-share-card" onclick="event.stopPropagation();shareProduct('${p.id}')">📤 分享</button>
     </div>
   `).join('')
 }
@@ -2042,6 +2128,8 @@ function renderDetailPage(p) {
   `
 
   const btns = []
+  // 分享按钮（所有人可见）
+  btns.push(`<button class="btn btn-primary" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none" onclick="shareProduct('${p.id}')">📤 分享产品</button>`)
   if (hasPermission('canEdit') || isCurrentUserAdmin()) {
     btns.push(`<button class="btn btn-success" onclick="openSoldModal('${p.id}',${p.quantity||0})">标记卖出</button>`)
   }
@@ -2087,6 +2175,48 @@ function restoreDeletedIds() {
     const saved = JSON.parse(localStorage.getItem('pm_deleted_ids') || '[]')
     state._deletedProductIds = new Set(saved)
   } catch(e) { state._deletedProductIds = new Set() }
+}
+
+// ==================== 分享功能 ====================
+function shareProduct(id) {
+  // 生成分享链接：当前页面URL + #guest/产品ID
+  const url = location.origin + location.pathname + '#guest/' + id
+  copyToClipboard(url)
+  showToast('📋 分享链接已复制')
+}
+
+// 记录当前访客查看的产品ID（用于访客详情页的分享）
+let _currentGuestProductId = null
+
+function shareCurrentGuest() {
+  if (!_currentGuestProductId) return
+  const url = location.origin + location.pathname + '#guest/' + _currentGuestProductId
+  copyToClipboard(url)
+  showShareToast('📋 链接已复制')
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text))
+  } else {
+    fallbackCopy(text)
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea')
+  ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px'
+  document.body.appendChild(ta); ta.select()
+  try { document.execCommand('copy') } catch(e) {}
+  document.body.removeChild(ta)
+}
+
+function showShareToast(msg) {
+  const el = document.createElement('div')
+  el.className = 'guest-share-toast'
+  el.textContent = msg
+  document.body.appendChild(el)
+  setTimeout(() => el.remove(), 2000)
 }
 
 // ==================== 标记卖出 ====================
@@ -2815,7 +2945,191 @@ function stopAutoPoll() {
 
 // ==================== 初始化 ====================
 restoreDeletedIds()  // 恢复已删除产品ID追踪
-autoLogin()
+
+// 检测是否为访客模式（URL带 #guest 或 #guest/产品ID）
+const hash = location.hash.replace('#', '')
+if (hash.startsWith('guest')) {
+  initGuestMode(hash)
+} else {
+  autoLogin()
+}
+
+// ==================== 访客浏览模式（无需登录） ====================
+let _guestProducts = []
+let _guestPageStack = []
+
+async function initGuestMode(hash) {
+  const productId = hash.replace('guest/', '').replace('guest', '') || null
+  try {
+    showLoading('加载产品数据…')
+    // 访客模式下直接从云端读取公开产品数据
+    const data = await readCloudData()
+    hideLoading()
+    if (!data || !data.products) {
+      renderGuestEmpty('暂无产品数据')
+      return
+    }
+    _guestProducts = (data.products || []).filter(p => p && p.id)
+      .sort((a, b) => (b.create_time || '').localeCompare(a.create_time || ''))
+
+    if (productId) {
+      // 直接查看某个产品的详情
+      const product = _guestProducts.find(p => p.id === productId)
+      if (product) {
+        _currentGuestProductId = productId
+        renderGuestDetail(product)
+        goGuestPage('guest-detail')
+      } else {
+        showToast('产品不存在')
+        renderGuestList()
+        goGuestPage('guest')
+      }
+    } else {
+      renderGuestList()
+      goGuestPage('guest')
+    }
+  } catch(e) {
+    hideLoading()
+    renderGuestEmpty('加载失败，请稍后重试')
+  }
+}
+
+function goGuestPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+  document.getElementById(name + '-page').classList.add('active')
+  // 隐藏tabbar
+  document.getElementById('tabbar').style.display = 'none'
+}
+
+function goGuestBack() {
+  if (_guestPageStack.length > 0) {
+    const prev = _guestPageStack.pop()
+    if (prev === 'list') { renderGuestList(); goGuestPage('guest') }
+  } else {
+    renderGuestList(); goGuestPage('guest')
+  }
+  _currentGuestProductId = null
+}
+
+// 渲染访客产品列表（隐藏敏感信息）
+function renderGuestList() {
+  const container = document.getElementById('guestContent')
+  if (!_guestProducts.length) {
+    container.innerHTML = `
+      <div class="guest-header">
+        <div class="guest-header-title">🛒 产品目录</div>
+        <div class="guest-header-sub">浏览我们的精选商品</div>
+      </div>
+      <div class="empty-tip" style="padding:40px 0"><div class="empty-icon">📦</div><div class="empty-text">暂无产品</div></div>
+    `
+    return
+  }
+
+  let html = `
+    <div class="guest-header">
+      <div class="guest-header-title">🛒 产品目录</div>
+      <div class="guest-header-sub">共 ${_guestProducts.length} 款产品 · 点击查看详情</div>
+    </div>
+  `
+
+  _guestProducts.forEach(p => {
+    const imgHtml = (p.images && p.images.length)
+      ? `<img class="guest-card-img" src="${p.images[0].startsWith('data:') ? p.images[0] : escAttr(p.images[0])}" onerror="this.style.display='none'">`
+      : ''
+    const featuresHtml = (p.features && p.features.length)
+      ? `<div style="margin-top:6px">${p.features.map(f => `<span class="guest-feature-tag">${escHtml(f)}</span>`).join('')}</div>`
+      : ''
+
+    html += `
+      <div class="guest-product-card" onclick="_currentGuestProductId='${p.id}';_guestPageStack.push('list');renderGuestDetail(_guestProducts.find(x=>x.id==='${p.id}'));goGuestPage('guest-detail')">
+        ${imgHtml}
+        <div class="guest-card-model">
+          ${p.brand ? `<span class="guest-card-brand">${escHtml(p.brand)}</span>` : ''}
+          <span>${escHtml(p.model)}</span>
+        </div>
+        ${(p.features && p.features.length) ? featuresHtml : ''}
+      </div>
+    `
+  })
+
+  html += `
+    <div style="text-align:center;padding:30px 16px;color:var(--text-sub);font-size:13px">
+      <div style="margin-bottom:8px">🔐 登录后可查看更多详细信息</div>
+      <button class="btn btn-primary" style="padding:10px 32px;font-size:14px" onclick="location.hash='';location.reload()">立即登录</button>
+    </div>
+  `
+
+  container.innerHTML = html
+}
+
+// 渲染访客产品详情（隐藏敏感信息）
+function renderGuestDetail(p) {
+  const container = document.getElementById('guestDetailContent')
+
+  const imgSection = (p.images && p.images.length) ? `
+    <div style="background:#fff;padding:14px;margin:-1px -1px 0">
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch">
+        ${p.images.map((img, i) =>
+          `<img src="${img.startsWith('data:')?img:escAttr(img)}" style="width:160px;height:160px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:pointer" onclick="openImgViewer('_base64_${i}')">`
+        ).join('')}
+      </div>
+    </div>
+  ` : ''
+
+  const featureTags = (p.features && p.features.length) ? `
+    <div style="padding:12px 16px;background:#fff;margin-top:10px;border-radius:14px">
+      <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:8px">特性标签</div>
+      <div>${p.features.map(f => `<span class="guest-feature-tag">${escHtml(f)}</span>`).join('')}</div>
+    </div>
+  ` : ''
+
+  const infoSection = `
+    <div style="padding:12px 16px;background:#fff;margin-top:10px;border-radius:14px">
+      <div style="font-size:13px;font-weight:600;color:#555;margin-bottom:8px">基本信息</div>
+      ${p.purchase_time ? `<div class="guest-info-row"><span class="guest-info-key">进货时间</span><span class="guest-info-val">${escHtml(p.purchase_time)}</span></div>` : ''}
+      ${p.create_time ? `<div class="guest-info-row"><span class="guest-info-key">录入时间</span><span class="guest-info-val">${p.create_time.slice(0,19)}</span></div>` : ''}
+    </div>
+  `
+
+  container.innerHTML = `
+    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:24px 16px 20px;color:#fff">
+      <div style="font-size:22px;font-weight:700;margin-bottom:6px">${escHtml(p.model)}</div>
+      ${p.brand ? `<span style="display:inline-block;font-size:13px;padding:3px 12px;background:rgba(255,255,255,.2);border-radius:20px;color:#fff">${escHtml(p.brand)}</span>` : ''}
+    </div>
+    ${imgSection}
+    ${featureTags}
+    ${infoSection}
+    <div style="text-align:center;padding:30px 16px 40px">
+      <button class="btn btn-primary" style="padding:11px 36px;font-size:14px;background:linear-gradient(135deg,#667eea,#764ba2);box-shadow:0 4px 15px rgba(102,126,234,.4)" onclick="shareCurrentGuest()">📤 分享给好友</button>
+    </div>
+  `
+
+  // 更新导航栏标题
+  const navTitle = document.querySelector('#guest-detail-page .navbar-title')
+  if (navTitle) navTitle.textContent = escHtml(p.model).slice(0, 15)
+}
+
+function renderGuestEmpty(msg) {
+  document.getElementById('guestContent').innerHTML = `
+    <div class="guest-header">
+      <div class="guest-header-title">🛒 产品目录</div>
+      <div class="guest-header-sub">浏览我们的精选商品</div>
+    </div>
+    <div class="empty-tip" style="padding:60px 20px"><div class="empty-icon">📦</div><div class="empty-text">${msg}</div></div>
+  `
+  goGuestPage('guest')
+}
+
+function showGuestLoginTip() {
+  if (confirm('切换到登录页面？\n\n登录后可管理产品和查看详细数据。')) {
+    location.hash = ''
+    location.reload()
+  }
+}
+
+function escAttr(s) {
+  return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
 
 // 页面从后台切回前台时，立即同步最新数据
 document.addEventListener('visibilitychange', () => {
