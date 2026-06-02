@@ -917,6 +917,23 @@ a{text-decoration:none;color:inherit}
 </div><!-- end app-container -->
 
 <script>
+// ==================== 同步预检：防止刷新时闪烁登录页 ====================
+(function() {
+  try {
+    const su = localStorage.getItem('pm_session_user')
+    const raw = localStorage.getItem('pm_cache')
+    if (su && raw) {
+      const d = JSON.parse(raw)
+      const u = (d.users || []).find(function(x) { return x.username === su && x.status !== 'disabled' })
+      if (u) {
+        // 立即隐藏登录页、显示首页（在浏览器首次绘制前完成，不闪烁）
+        document.getElementById('login-page').classList.remove('active')
+        document.getElementById('index-page').classList.add('active')
+      }
+    }
+  } catch(e) {}
+})()
+
 // ==================== 配置 ====================
 // 阿里云函数计算 API 地址（部署后填入实际URL）
 const API_BASE = ''
