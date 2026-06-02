@@ -1157,7 +1157,7 @@ function switchLoginTab(tab) {
 
 // ==================== 账号登录 ====================
 async function doAccountLogin() {
-  const username = document.getElementById('loginUsername').value.trim()
+  const username = document.getElementById('loginUsername').value.trim().toLowerCase()
   const password = document.getElementById('loginPassword').value.trim()
   if (!username || !password) { showToast('请输入用户名和密码'); return }
 
@@ -1171,32 +1171,39 @@ async function doAccountLogin() {
   showLoading('验证账号…')
   let success = false
   let foundUser = null
+  let finalData = null
 
-  // 先检查本地缓存有没有用户
+  // 第一步：先检查本地缓存（快速，离线可用）
   const localData = getLocalData()
   foundUser = findUser(localData.users, username, password)
 
   if (foundUser) {
     success = true
+    finalData = localData
   }
 
-  // 本地没找到 → 尝试云端（如果有缓存的Token）
-  const cachedToken = localStorage.getItem('pm_token')
-  if (!success && cachedToken) {
-    state.token = cachedToken
+  // 第二步：本地没找到 → 直接去云端查（不需要Token）
+  if (!success) {
     try {
-      await apiFetch('/api/user')  // 验证Token是否有效
       state.cloudSync = true
       const cloudData = await readCloudData()
       foundUser = findUser(cloudData.users, username, password)
       if (foundUser) {
         success = true
-        saveLocalCache(cloudData)  // 缓存到本地，下次不用再拉
+        finalData = cloudData
+        saveLocalCache(cloudData)  // 缓存到本地
       }
     } catch(e) {
-      // Token无效或网络不通
       state.cloudSync = false
+      // 云端不可用
     }
+  } else if (!state.cloudSync) {
+    // 本地找到了，但后台也尝试连云端拉最新数据
+    apiFetch('/api/data').then(() => {
+      state.cloudSync = true
+      showSyncStatus(`☁️ ${foundUser.name || foundUser.username}`)
+      updateSyncUI()
+    }).catch(() => {})
   }
 
   if (!success) {
@@ -1211,7 +1218,7 @@ async function doAccountLogin() {
   // 登录成功
   hideLoading()
   state.currentUser = foundUser
-  applyData(localData.users.length > 0 ? localData : getLocalData())
+  applyData(finalData)
 
   // 保存登录状态
   try { localStorage.setItem('pm_last_user', username) } catch(e) {}
