@@ -1138,6 +1138,12 @@ function getLocalData() {
 function saveLocalCache(data) {
   localCache = data
   try { localStorage.setItem('pm_cache', JSON.stringify(data)) } catch(e) {}
+  // 保存 API token，让同步请求可以带上认证
+  const apiToken = data.config && data.config.apiToken
+  if (apiToken) {
+    state.token = apiToken
+    try { localStorage.setItem('pm_token', apiToken) } catch(e) {}
+  }
 }
 
 // ==================== 数据操作层 ====================
@@ -1374,6 +1380,15 @@ async function doAccountLogin() {
   hideLoading()
   state.currentUser = foundUser
   applyData(finalData)
+
+  // 恢复 token（从 localStorage 或数据 config 中），确保同步功能可用
+  const savedToken = localStorage.getItem('pm_token')
+  if (savedToken) {
+    state.token = savedToken
+  } else if (finalData && finalData.config && finalData.config.apiToken) {
+    state.token = finalData.config.apiToken
+    try { localStorage.setItem('pm_token', finalData.config.apiToken) } catch(e) {}
+  }
 
   // 保存登录状态
   try { localStorage.setItem('pm_last_user', username) } catch(e) {}
@@ -1696,8 +1711,15 @@ async function doManualSync() {
     showToast('✅ 数据已同步到云端')
   } catch (err) {
     state.cloudSync = false
-    showSyncStatus('❌ 同步失败')
-    showToast(err.message || '网络异常，请检查网络后重试')
+    // 区分错误类型
+    const errMsg = err.message || '网络异常'
+    if (errMsg.includes('401') || errMsg.includes('无效') || errMsg.includes('令牌')) {
+      showSyncStatus('❌ 同步失败')
+      showToast('请输入有效令牌，请在登录页重新登录')
+    } else {
+      showSyncStatus('❌ 同步失败')
+      showToast(errMsg)
+    }
   }
   updateSyncUI()
 }
@@ -1740,6 +1762,7 @@ function useLocalMode() {
       state.cloudSync = false
       goPage('index', false)
       const token = localStorage.getItem('pm_token')
+      if (token) state.token = token
       if (token) {
         showSyncStatus(`📱 ${user.name || user.username}（可点🔄同步）`)
         showToast(`欢迎回来，${user.name || user.username}`)
@@ -1896,6 +1919,9 @@ async function autoLogin() {
           state.currentUser = foundUser
           applyData(loginData)
           saveLocalCache(loginData)
+          // 恢复 token（从 localStorage 或 config 中）
+          const savedToken = localStorage.getItem('pm_token')
+          if (savedToken) state.token = savedToken
           goPage('index', false)
           showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
           // 自动登录成功后也同步最新数据
