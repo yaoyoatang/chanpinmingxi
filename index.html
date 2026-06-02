@@ -606,7 +606,7 @@ a{text-decoration:none;color:inherit}
     </div>
 
     <div class="login-divider">或</div>
-    <button class="login-btn login-btn-green" onclick="useLocalMode()" id="localBtn" style="margin-bottom:8px">📱 直接使用</button>
+    <button class="login-btn login-btn-green" onclick="useLocalMode()" id="localBtn" style="margin-bottom:8px">📱 恢复离线缓存</button>
   </div>
 </div>
 
@@ -1707,20 +1707,21 @@ function mergeUsers(remote, local) {
 }
 
 // ==================== 本地模式 ====================
+// 安全修复：本地模式仅恢复上次正式登录后缓存的用户，不再自动创建管理员
+// 首次使用必须通过 Token 登录设置管理员，或注册账号
 function useLocalMode() {
   state.pendingCount = 0
   const cached = getLocalData()
-  applyData(cached)
 
-  // 尝试用上次缓存的账号自动登录
+  // 尝试用上次缓存的账号恢复登录（离线模式）
   const lastUser = localStorage.getItem('pm_last_user')
   if (lastUser && cached.users && cached.users.length > 0) {
     const user = cached.users.find(u => u.username === lastUser && u.status !== 'disabled')
     if (user) {
+      applyData(cached)
       state.currentUser = user
       state.cloudSync = false
       goPage('index', false)
-      // 检查是否有缓存的Token可以尝试云端
       const token = localStorage.getItem('pm_token')
       if (token) {
         showSyncStatus(`📱 ${user.name || user.username}（可点🔄同步）`)
@@ -1734,43 +1735,9 @@ function useLocalMode() {
     }
   }
 
-    // 兜底：有用户数据就用第一个可用用户
-  if (cached.users && cached.users.length > 0) {
-    const avail = cached.users.find(u => u.status !== 'disabled') || cached.users[0]
-    state.currentUser = avail
-    state.cloudSync = false
-    goPage('index', false)
-    showSyncStatus(`📱 ${avail.name || avail.username}`)
-    showToast(`✅ 本地模式 - ${avail.name || avail.username}`)
-    updateSyncUI()
-    return
-  }
-
-  // 完全新用户 - 自动创建本地管理员
-  const defaultUser = {
-    id: 'local-admin-' + Date.now(),
-    username: 'admin',
-    name: '本地管理员',
-    password: '',
-    role: 'super_admin',
-    status: 'active',
-    permissions: {
-      viewBrands: [],
-      hidePrice: false,
-      canEdit: true,
-      canAdd: true,
-      canDelete: true
-    },
-    createdAt: new Date().toISOString()
-  }
-  cached.users = [defaultUser]
-  saveLocalData(cached)
-  state.currentUser = defaultUser
-  state.cloudSync = false
-  goPage('index', false)
-  showSyncStatus('📱 本地模式（离线）')
-  showToast('✅ 已进入本地模式')
-  updateSyncUI()
+  // 没有缓存的登录用户 — 拒绝访问，要求正式登录
+  // 安全修复：移除了静默管理员登录和自动创建超级管理员的逻辑
+  showToast('⚠️ 没有缓存的登录信息，请先通过账号登录或Token登录')
 }
 
 // ==================== 注册 ====================
@@ -1941,15 +1908,8 @@ async function autoLogin() {
     document.getElementById('loginPassword').focus()
   }
 
-  // 2. 检查纯本地模式的用户（原有逻辑）
-  const localData = getLocalData()
-  if (localData.users && localData.users.length > 0) {
-    const admin = localData.users.find(u => u.role === 'admin' || u.role === 'super_admin')
-    if (admin) {
-      state.currentUser = admin
-      applyData(localData)
-    }
-  }
+  // 2. 不再静默以管理员身份登录 — 必须通过正式登录流程
+  // 安全修复：移除了本地缓存静默管理员登录，防止未授权访问
 }
 
 // ==================== 退出登录 ====================
