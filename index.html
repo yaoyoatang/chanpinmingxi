@@ -1852,7 +1852,7 @@ function renderProductList() {
   list.innerHTML = filtered.map(p => `
     <div class="product-card" onclick="goDetail('${p.id}')">
       <div class="product-card-header">
-        <span class="product-model">${p.brand ? escHtml(p.brand + ' ') : ''}${escHtml(p.model)}</span>
+        <span class="product-model">${p.brand ? `<span style="color:#e53935">${escHtml(p.brand)}</span> ` : ''}${escHtml(p.model)}</span>
         ${p.brand ? `<span class="product-brand">${escHtml(p.brand)}</span>` : ''}
         ${(p.quantity||0) <= 0 ? '<span class="sold-badge">已售罄</span>' : ''}
       </div>
@@ -2503,7 +2503,13 @@ function showWeeklyReport() {
     monday.setDate(diff)
     monday.setHours(0,0,0,0)
     const key = monday.toISOString().slice(0,10) // YYYY-MM-DD（周一日期）
-    if (!weekMap[key]) weekMap[key] = { weekStart: key, count: 0, totalQty: 0, totalValue: 0, products: [] }
+    // 该周实际结束日（周日）
+    const sunday = new Date(monday.getTime() + 6 * 86400000)
+    const sundayStr = sunday.toISOString().slice(0,10)
+    // 显示范围要裁剪到用户选择的时间边界
+    const displayStart = startDate && key < startDate ? startDate : key
+    const displayEnd = endDate && sundayStr > endDate ? endDate : sundayStr
+    if (!weekMap[key]) weekMap[key] = { weekStart: key, weekEnd: sundayStr, displayStart, displayEnd, count: 0, totalQty: 0, totalValue: 0, products: [] }
     const originQty = (p.quantity || 0) + (p.sold_count || 0)
     weekMap[key].count++
     weekMap[key].totalQty += originQty
@@ -2534,7 +2540,7 @@ function showWeeklyReport() {
   let grandTotalQty = 0, grandTotalValue = 0
   weeks.forEach(w => {
     html += `<table>
-      <tr class="week-header"><td colspan="5">📅 周期：${w.weekStart} ~ ${new Date(new Date(w.weekStart).getTime()+6*86400000).toISOString().slice(0,10)}（共 ${w.count} 款产品）</td></tr>
+      <tr class="week-header"><td colspan="5">📅 周期：${w.displayStart} ~ ${w.displayEnd}（共 ${w.count} 款产品）</td></tr>
       <tr><th>品牌</th><th>型号</th><th>进货量</th><th>单价(元)</th><th>小计(元)</th></tr>`
     w.products.forEach(p => {
       const itemValue = p.qty * p.price
