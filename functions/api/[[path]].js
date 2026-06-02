@@ -1,7 +1,7 @@
 // 产品明细分销系统 - Cloudflare Pages Function 后端
 // 数据存储：Cloudflare KV (通过环境变量绑定)
 // 路径：/api/data, /api/sync, /api/user
-// v2
+// v3 - 增加 Token 认证
 
 const DATA_KEY = 'app_data'
 
@@ -53,6 +53,48 @@ async function readData(env) {
   return ensureSchema(data)
 }
 
+// 从请求中提取 Token
+function extractToken(request) {
+  const authHeader = request.headers.get('Authorization') || ''
+  if (authHeader.startsWith('Bearer ')) return authHeader.slice(7).trim()
+  const url = new URL(request.url)
+  return (url.searchParams.get('token') || '').trim()
+}
+
+// 验证 Token - 返回 { ok, data, isFirstSetup }
+async function verifyToken(request, env) {
+  const token = extractToken(request)
+  if (!token || token.length < 3) {
+    return { ok: false, status: 401, message: '请输入有效的访问令牌' }
+  }
+
+  const data = await readData(env)
+  const apiToken = (data.config && data.config.apiToken) ? data.config.apiToken.trim() : ''
+
+  if (apiToken) {
+    // 已设置管理令牌：必须精确匹配
+    if (token !== apiToken) {
+      console.log(`[认证失败] Token 不匹配 (输入长度:${token.length}, 正确长度:${apiToken.length})`)
+      return { ok: false, status: 401, message: '访问令牌无效' }
+    }
+    return { ok: true, data, isFirstSetup: false }
+  } else {
+    // 首次使用：将当前 token 设为管理令牌
+    console.log(`[首次初始化] 设置 API 管理令牌 (长度:${token.length})`)
+    if (!data.config) data.config = {}
+    data.config.apiToken = token
+    data._version = (data._version || 0) + 1
+    data._updatedAt = new Date().toISOString()
+    await env.DATA_KV.put(DATA_KEY, JSON.stringify(data))
+    return { ok: true, data, isFirstSetup: true }
+  }
+}
+
+// 验证写入权限（复用 verifyToken）
+async function requireAuth(request, env) {
+  return await verifyToken(request, env)
+}
+
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -60,7 +102,7 @@ function jsonResponse(data, status = 200) {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }
   })
 }
@@ -78,31 +120,44 @@ export async function onRequest(context) {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
       }
     })
   }
 
   try {
-    // GET /api/data — 获取数据
+    // GET /api/data — 获取数据（无需认证，访客可查看）
     if (method === 'GET' && path === '/api/data') {
       const data = await readData(env)
       return jsonResponse(data)
     }
 
-    // POST/PUT /api/data — 保存数据
+    // POST/PUT /api/data — 保存数据（需要 Token 认证）
     if ((method === 'POST' || method === 'PUT') && path === '/api/data') {
+      const auth = await requireAuth(request, env)
+      if (!auth.ok) return jsonResponse({ message: auth.message }, auth.status)
+
       const body = await request.json()
       body._version = (body._version || 0) + 1
       body._updatedAt = new Date().toISOString()
+
+      // 保护 apiToken 不被覆盖删除
+      if (auth.data.config && auth.data.config.apiToken && (!body.config || !body.config.apiToken)) {
+        if (!body.config) body.config = {}
+        body.config.apiToken = auth.data.config.apiToken
+      }
+
       await env.DATA_KV.put(DATA_KEY, JSON.stringify(body))
       return jsonResponse({ success: true, version: body._version })
     }
 
-    // POST /api/sync — 同步数据（合并而非覆盖）
+    // POST /api/sync — 同步数据（需要 Token 认证）
     if (method === 'POST' && path === '/api/sync') {
+      const auth = await requireAuth(request, env)
+      if (!auth.ok) return jsonResponse({ message: auth.message }, auth.status)
+
       const sd = await request.json()
-      const cloud = await readData(env)
+      const cloud = auth.data
 
       // 产品：以id为key合并，客户端优先（因为客户端有最新操作）
       const productMap = {}
@@ -122,8 +177,11 @@ export async function onRequest(context) {
       ;(sd.invites || []).forEach(i => { inviteMap[i.code] = i })
       const mergedInvites = Object.values(inviteMap)
 
-      // 配置：深度合并
+      // 配置：深度合并，保护 apiToken
       const mergedConfig = { ...(cloud.config || {}), ...(sd.config || {}) }
+      if (cloud.config && cloud.config.apiToken && !sd.config?.apiToken) {
+        mergedConfig.apiToken = cloud.config.apiToken
+      }
 
       const result = {
         products: mergedProducts,
@@ -138,10 +196,22 @@ export async function onRequest(context) {
       return jsonResponse({ success: true, data: result, version: result._version })
     }
 
-    // GET /api/user — 用户登录
-    if (method === 'GET' && path === '/api/user') {
-      const data = await readData(env)
-      return jsonResponse({ login: 'admin', valid: true, data })
+    // GET/POST /api/user — Token 验证登录（必须提供有效 Token）
+    if ((method === 'GET' || method === 'POST') && path === '/api/user') {
+      const auth = await verifyToken(request, env)
+      if (!auth.ok) {
+        return jsonResponse({ login: null, valid: false, message: auth.message }, auth.status)
+      }
+
+      const data = auth.data
+      return jsonResponse({
+        login: 'admin',
+        name: data.config?.adminName || '管理员',
+        valid: true,
+        role: 'admin',
+        firstSetup: auth.isFirstSetup,
+        message: auth.isFirstSetup ? '首次连接成功，该令牌已设为管理密钥' : undefined
+      })
     }
 
     return jsonResponse({ error: 'not found' }, 404)
