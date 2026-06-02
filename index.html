@@ -1746,7 +1746,7 @@ function mergeUsers(remote, local) {
 }
 
 // ==================== 本地模式 ====================
-// 安全修复：本地模式仅恢复上次正式登录后缓存的用户，不再自动创建管理员
+// 安全修复：本地模式恢复时必须验证密码，防止共享设备上未授权访问
 // 首次使用必须通过 Token 登录设置管理员，或注册账号
 function useLocalMode() {
   state.pendingCount = 0
@@ -1755,7 +1755,11 @@ function useLocalMode() {
   // 尝试用上次缓存的账号恢复登录（离线模式）
   const lastUser = localStorage.getItem('pm_last_user')
   if (lastUser && cached.users && cached.users.length > 0) {
-    const user = cached.users.find(u => u.username === lastUser && u.status !== 'disabled')
+    // 必须输入密码才能恢复离线缓存（防止共享设备上的未授权访问）
+    const password = prompt(`恢复离线缓存 — 请输入密码验证身份\n\n用户名: ${lastUser}`)
+    if (!password) return  // 用户取消
+    const hashed = simpleHash(password)
+    const user = cached.users.find(u => u.username === lastUser && u.password === hashed && u.status !== 'disabled')
     if (user) {
       applyData(cached)
       state.currentUser = user
@@ -1773,10 +1777,11 @@ function useLocalMode() {
       updateSyncUI()
       return
     }
+    showToast('密码错误，无法恢复离线缓存')
+    return
   }
 
   // 没有缓存的登录用户 — 拒绝访问，要求正式登录
-  // 安全修复：移除了静默管理员登录和自动创建超级管理员的逻辑
   showToast('⚠️ 没有缓存的登录信息，请先通过账号登录或Token登录')
 }
 
