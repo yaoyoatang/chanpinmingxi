@@ -1254,7 +1254,13 @@ async function pushData() {
 }
 
 function collectData() {
-  return { products: state.products, config: state.config, users: state.users, invites: state.invites }
+  return {
+    products: state.products,
+    config: state.config,
+    users: state.users,
+    invites: state.invites,
+    _deletedProductIds: [...state._deletedProductIds]
+  }
 }
 
 // ==================== 路由 ====================
