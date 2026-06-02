@@ -159,10 +159,21 @@ export async function onRequest(context) {
       const sd = await request.json()
       const cloud = auth.data
 
-      // 产品：以id为key合并，客户端优先（因为客户端有最新操作）
+      // 产品：以id为key合并，客户端优先
+      // 先收集客户端已删除的产品ID（来自 _deletedProductIds 或不在客户端列表中的云端产品）
+      const deletedProductIds = new Set(sd._deletedProductIds || [])
+
+      // 云端有但客户端没有的产品 = 客户端已删除 → 加入删除集合
+      const clientProductIds = new Set((sd.products || []).map(p => p.id))
+      ;(cloud.products || []).forEach(p => {
+        if (!clientProductIds.has(p.id)) {
+          deletedProductIds.add(p.id)
+        }
+      })
+
       const productMap = {}
-      ;(cloud.products || []).forEach(p => { productMap[p.id] = p })
-      ;(sd.products || []).forEach(p => { productMap[p.id] = p })  // 客户端优先
+      ;(cloud.products || []).forEach(p => { if (!deletedProductIds.has(p.id)) productMap[p.id] = p })
+      ;(sd.products || []).forEach(p => { if (!deletedProductIds.has(p.id)) productMap[p.id] = p })  // 客户端优先
       const mergedProducts = Object.values(productMap)
 
       // 用户：以id为key合并
