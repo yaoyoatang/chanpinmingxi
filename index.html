@@ -1593,12 +1593,15 @@ async function doRegister() {
   btn.textContent = '注册中…'
   errEl.style.display = 'none'
 
-  // 验证邀请码
+  // 验证邀请码 — 始终优先从云端读取（邀请码可能由其他设备的管理员创建）
   showLoading('验证邀请码…')
   let data
   try {
-    data = state.cloudSync ? await readCloudData() : getLocalData()
+    // 先尝试云端数据
+    const cloudData = await readCloudData()
+    data = cloudData
   } catch(e) {
+    // 云端不可用时退回本地
     data = getLocalData()
   }
   hideLoading()
@@ -1656,11 +1659,15 @@ async function doRegister() {
     data.invites[inviteIdx].status = 'used'
   }
 
-  // 保存
+  // 保存 — 注册时始终尝试写入云端
   applyData(data)
   saveLocalCache(data)
-  if (state.cloudSync) {
-    try { await writeCloudData(data) } catch(e) { /* 继续本地 */ }
+  try {
+    await writeCloudData(data)
+    state.cloudSync = true
+  } catch(e) {
+    // 云端不可用时仅保存本地
+    state.cloudSync = false
   }
 
   showToast('✅ 注册成功！正在登录…')
