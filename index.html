@@ -667,7 +667,18 @@ a{text-decoration:none;color:inherit}
     <span class="navbar-title">🛒 产品目录</span>
     <span class="navbar-action" onclick="showGuestLoginTip()">登录</span>
   </nav>
-  <div id="guestContent"></div>
+  <!-- 搜索栏（与主站同款） -->
+  <div class="search-bar-wrap">
+    <div class="search-bar" style="border-color:#c5b8e0;background:rgba(255,255,255,.9)">
+      <span class="search-icon">🔍</span>
+      <input id="guestSearchInput" placeholder="搜索型号、品牌…" oninput="onGuestSearch(this.value)">
+      <span id="guestSearchClear" onclick="clearGuestSearch()" style="color:#bbb;cursor:pointer;display:none">✕</span>
+    </div>
+  </div>
+  <!-- 分类标签 -->
+  <div class="brand-tabs" id="guestBrandTabs"></div>
+  <!-- 产品列表 -->
+  <div class="product-list" id="guestContent" style="padding-bottom:60px"></div>
 </div>
 
 <!-- 访客产品详情 -->
@@ -2957,6 +2968,9 @@ if (hash.startsWith('guest')) {
 // ==================== 访客浏览模式（无需登录） ====================
 let _guestProducts = []
 let _guestPageStack = []
+let _guestSearchKeyword = ''      // 访客搜索关键词
+let _guestCurrentFilter = '全部'  // 访客当前品牌筛选
+let _guestSearchTimer = null
 
 async function initGuestMode(hash) {
   const productId = hash.replace('guest/', '').replace('guest', '') || null
@@ -3002,64 +3016,117 @@ function goGuestPage(name) {
 }
 
 function goGuestBack() {
+  _currentGuestProductId = null
   if (_guestPageStack.length > 0) {
     const prev = _guestPageStack.pop()
-    if (prev === 'list') { renderGuestList(); goGuestPage('guest') }
+    if (prev === 'list') { renderGuestProductList(); goGuestPage('guest') }
   } else {
-    renderGuestList(); goGuestPage('guest')
+    renderGuestProductList(); goGuestPage('guest')
   }
-  _currentGuestProductId = null
 }
 
-// 渲染访客产品列表（隐藏敏感信息）
+// 渲染访客产品列表（隐藏敏感信息，布局与主站一致）
+function getGuestFilteredProducts() {
+  let list = [..._guestProducts]
+  // 品牌筛选
+  if (_guestCurrentFilter !== '全部') {
+    list = list.filter(p => p.brand === _guestCurrentFilter)
+  }
+  // 搜索（复用 smartSearch）
+  if (_guestSearchKeyword) {
+    list = list.filter(p => smartSearch(p, _guestSearchKeyword))
+  }
+  list.sort((a, b) => (b.create_time || '').localeCompare(a.create_time || ''))
+  return list
+}
+
+function getGuestBrands() {
+  const brands = new Set()
+  _guestProducts.forEach(p => { if (p.brand) brands.add(p.brand) })
+  return [...brands].sort()
+}
+
+function renderGuestBrandTabs() {
+  const container = document.getElementById('guestBrandTabs')
+  if (!container) return
+  const tabs = ['全部', ...getGuestBrands()]
+  container.innerHTML = tabs.map(b =>
+    `<div class="brand-tab ${b === _guestCurrentFilter ? 'active' : ''}" style="${b === _guestCurrentFilter ? 'background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent' : ''}" onclick="filterGuestBrand('${b}')">${escHtml(b)}</div>`
+  ).join('')
+}
+
+function filterGuestBrand(brand) {
+  _guestCurrentFilter = brand
+  renderGuestBrandTabs()
+  renderGuestProductList()
+}
+
+function onGuestSearch(val) {
+  _guestSearchKeyword = val
+  document.getElementById('guestSearchClear').style.display = val ? '' : 'none'
+  clearTimeout(_guestSearchTimer)
+  _guestSearchTimer = setTimeout(renderGuestProductList, 200)
+}
+
+function clearGuestSearch() {
+  _guestSearchKeyword = ''
+  document.getElementById('guestSearchInput').value = ''
+  document.getElementById('guestSearchClear').style.display = 'none'
+  renderGuestProductList()
+}
+
 function renderGuestList() {
+  // 初始化后直接渲染产品列表
+  renderGuestProductList()
+
+  // 底部登录引导
   const container = document.getElementById('guestContent')
-  if (!_guestProducts.length) {
-    container.innerHTML = `
-      <div class="guest-header">
-        <div class="guest-header-title">🛒 产品目录</div>
-        <div class="guest-header-sub">浏览我们的精选商品</div>
+  if (!container.innerHTML.includes('empty-tip')) {
+    container.innerHTML += `
+      <div style="text-align:center;padding:24px 16px;color:var(--text-sub);font-size:13px">
+        <div style="margin-bottom:8px">🔐 登录后可查看更多详细信息</div>
+        <button class="btn btn-primary" style="padding:10px 32px;font-size:14px;background:linear-gradient(135deg,#667eea,#764ba2);box-shadow:0 2px 10px rgba(102,126,234,.3)" onclick="location.hash='';location.reload()">立即登录</button>
       </div>
-      <div class="empty-tip" style="padding:40px 0"><div class="empty-icon">📦</div><div class="empty-text">暂无产品</div></div>
     `
+  }
+}
+
+// 核心渲染：访客产品卡片列表（与主站布局一致，隐藏敏感信息）
+function renderGuestProductList() {
+  const container = document.getElementById('guestContent')
+  const filtered = getGuestFilteredProducts()
+
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-tip"><div class="empty-icon">📦</div><div class="empty-text">${_guestProducts.length > 0 ? '没有匹配的产品' : '暂无产品'}</div></div>`
+    document.getElementById('guestBrandTabs').innerHTML = ''
     return
   }
 
-  let html = `
-    <div class="guest-header">
-      <div class="guest-header-title">🛒 产品目录</div>
-      <div class="guest-header-sub">共 ${_guestProducts.length} 款产品 · 点击查看详情</div>
-    </div>
-  `
+  renderGuestBrandTabs()
 
-  _guestProducts.forEach(p => {
-    const imgHtml = (p.images && p.images.length)
-      ? `<img class="guest-card-img" src="${p.images[0].startsWith('data:') ? p.images[0] : escAttr(p.images[0])}" onerror="this.style.display='none'">`
-      : ''
-    const featuresHtml = (p.features && p.features.length)
-      ? `<div style="margin-top:6px">${p.features.map(f => `<span class="guest-feature-tag">${escHtml(f)}</span>`).join('')}</div>`
-      : ''
-
-    html += `
-      <div class="guest-product-card" onclick="_currentGuestProductId='${p.id}';_guestPageStack.push('list');renderGuestDetail(_guestProducts.find(x=>x.id==='${p.id}'));goGuestPage('guest-detail')">
-        ${imgHtml}
-        <div class="guest-card-model">
-          ${p.brand ? `<span class="guest-card-brand">${escHtml(p.brand)}</span>` : ''}
-          <span>${escHtml(p.model)}</span>
-        </div>
-        ${(p.features && p.features.length) ? featuresHtml : ''}
+  // 使用与主站一致的 product-card 样式，但隐藏所有敏感数据
+  container.innerHTML = filtered.map(p => `
+    <div class="product-card" onclick="_currentGuestProductId='${p.id}';_guestPageStack.push('list');renderGuestDetail(_guestProducts.find(x=>x.id==='${p.id}'));goGuestPage('guest-detail')">
+      <div class="product-card-header">
+        <span class="product-model">${p.brand ? `<span style="color:#e53935">${escHtml(p.brand)}</span> ` : ''}${escHtml(p.model)}</span>
+        ${p.brand ? `<span class="product-brand">${escHtml(p.brand)}</span>` : ''}
       </div>
-    `
-  })
+      ${(p.features && p.features.length) ? `
+      <div style="display:flex;flex-wrap:wrap;gap:4px;padding:0 2px;margin-top:4px">
+        ${p.features.slice(0, 3).map(f => `<span class="guest-feature-tag" style="font-size:10px;padding:2px 7px">${escHtml(f)}</span>`).join('')}
+        ${p.features.length > 3 ? `<span style="font-size:11px;color:var(--text-sub);align-self:center">+${p.features.length-3}</span>` : ''}
+      </div>` : ''}
+      <button class="btn-share-card" onclick="event.stopPropagation();shareProduct('${p.id}')">📤 分享</button>
+    </div>
+  `).join('')
 
-  html += `
-    <div style="text-align:center;padding:30px 16px;color:var(--text-sub);font-size:13px">
-      <div style="margin-bottom:8px">🔐 登录后可查看更多详细信息</div>
-      <button class="btn btn-primary" style="padding:10px 32px;font-size:14px" onclick="location.hash='';location.reload()">立即登录</button>
+  // 底部登录提示
+  container.innerHTML += `
+    <div style="text-align:center;padding:20px 16px;color:var(--text-sub);font-size:13px">
+      <div style="margin-bottom:8px">🔐 登录后可查看价格、库存等详细信息</div>
+      <button class="btn btn-primary" style="padding:10px 32px;font-size:14px;background:linear-gradient(135deg,#667eea,#764ba2);box-shadow:0 2px 10px rgba(102,126,234,.3)" onclick="location.hash='';location.reload()">立即登录</button>
     </div>
   `
-
-  container.innerHTML = html
 }
 
 // 渲染访客产品详情（隐藏敏感信息）
@@ -3111,12 +3178,13 @@ function renderGuestDetail(p) {
 
 function renderGuestEmpty(msg) {
   document.getElementById('guestContent').innerHTML = `
-    <div class="guest-header">
-      <div class="guest-header-title">🛒 产品目录</div>
-      <div class="guest-header-sub">浏览我们的精选商品</div>
-    </div>
     <div class="empty-tip" style="padding:60px 20px"><div class="empty-icon">📦</div><div class="empty-text">${msg}</div></div>
+    <div style="text-align:center;padding:24px 16px;color:var(--text-sub);font-size:13px">
+      <div style="margin-bottom:8px">🔐 登录后可查看更多详细信息</div>
+      <button class="btn btn-primary" style="padding:10px 32px;font-size:14px;background:linear-gradient(135deg,#667eea,#764ba2);box-shadow:0 2px 10px rgba(102,126,234,.3)" onclick="location.hash='';location.reload()">立即登录</button>
+    </div>
   `
+  document.getElementById('guestBrandTabs').innerHTML = ''
   goGuestPage('guest')
 }
 
