@@ -398,6 +398,7 @@ a{text-decoration:none;color:inherit}
 .user-name{font-size:15px;font-weight:600;color:var(--text-main)}
 .user-role-badge{font-size:11px;padding:2px 10px;border-radius:20px}
 .role-admin{background:#FFF3E0;color:#E65100;border:1px solid #FFCC80}
+.role-super{background:#FFEBEE;color:#C62828;border:1px solid #EF9A9A}
 .role-member{background:#E8F0FB;color:#185FA5;border:1px solid #B5D4F4}
 .user-info{font-size:12px;color:var(--text-sub);line-height:1.7}
 .user-actions{display:flex;gap:8px;margin-top:10px}
@@ -854,6 +855,13 @@ a{text-decoration:none;color:inherit}
         <span class="pwd-eye" onclick="togglePwd('newPwdInput',this)">👁</span>
       </div>
       <button class="btn btn-primary" style="width:100%;padding:10px" onclick="changeMyPassword()">确认修改</button>
+    </div>
+
+    <!-- 恢复超级管理员身份（仅管理员可见，超级管理员不可见） -->
+    <div id="securityRestoreAdmin" style="display:none;margin-top:8px;padding:10px;background:#FFF3E0;border-radius:10px;border:1px solid #FFCC80">
+      <div style="font-size:13px;font-weight:500;color:#E65100;margin-bottom:4px">⚠️ 你的角色是「管理员」而非「超级管理员」</div>
+      <div style="font-size:12px;color:var(--text-sub);margin-bottom:8px">管理员无法管理其他管理员。如果你是系统的创建者，可以恢复超级管理员身份。</div>
+      <button class="btn btn-primary" style="width:100%;padding:8px;font-size:13px;background:#E65100" onclick="restoreSuperAdmin()">恢复超级管理员身份</button>
     </div>
 
     <!-- 用户与权限管理（管理员及以上可见） -->
@@ -1696,6 +1704,10 @@ async function doManualSync() {
 
 function mergeUsers(remote, local) {
   // 以 local 为准，补充 remote 中有但 local 没有的
+  // 安全保护：当前登录用户的角色绝不会被合并降级
+  const currentUserId = (state.currentUser || {}).id
+  const currentRole = (state.currentUser || {}).role
+  const currentPerms = (state.currentUser || {}).permissions
   const map = {}
   const safeLocal = Array.isArray(local) ? local : []
   const safeRemote = Array.isArray(remote) ? remote : []
@@ -1703,6 +1715,11 @@ function mergeUsers(remote, local) {
   safeRemote.forEach(u => {
     if (u && u.id && !map[u.id]) map[u.id] = u
   })
+  // 保护：如果当前用户是 super_admin，合并后确保不被降级
+  if (currentUserId && currentRole === 'super_admin' && map[currentUserId]) {
+    map[currentUserId].role = 'super_admin'
+    if (currentPerms) map[currentUserId].permissions = { ...currentPerms }
+  }
   return Object.values(map)
 }
 
@@ -2425,11 +2442,14 @@ function loadManageConfig() {
   const adminArea = document.getElementById('securityAdminArea')
   const superArea = document.getElementById('securitySuperArea')
   const inviteBtn = document.getElementById('securityInviteBtn')
+  const restoreArea = document.getElementById('securityRestoreAdmin')
 
   if (adminArea) adminArea.style.display = isCurrentUserAdmin() ? '' : 'none'
   if (superArea) superArea.style.display = isCurrentUserSuperAdmin() ? '' : 'none'
   // 邀请码按钮：仅管理员可见（成员不可生成邀请码）
   if (inviteBtn) inviteBtn.style.display = isCurrentUserAdmin() ? '' : 'none'
+  // 恢复超级管理员：仅当用户是 admin 而非 super_admin 时显示
+  if (restoreArea) restoreArea.style.display = (isCurrentUserAdmin() && !isCurrentUserSuperAdmin()) ? '' : 'none'
 
   // 填充注册用户概览列表
   renderSecurityUserList()
@@ -2595,7 +2615,7 @@ function renderUserList() {
     const perm = u.permissions || {}
     const brandInfo = perm.brands && perm.brands.length > 0 ? perm.brands.join('、') : '全部品牌'
     const roleLabel = u.role === 'super_admin' ? '超级管理员' : (u.role === 'admin' ? '管理员' : '成员')
-    const roleClass = u.role === 'super_admin' ? 'role-admin' : (u.role === 'admin' ? 'role-admin' : 'role-member')
+    const roleClass = u.role === 'super_admin' ? 'role-super' : (u.role === 'admin' ? 'role-admin' : 'role-member')
     // 权限控制：自己不能管理自己；admin不能管理super_admin和其他admin；super_admin可以管理所有人
     const canManage = u.id !== currentId && (isSuper || (isAdmin && u.role === 'member'))
     const canSetAdmin = canManage && u.role === 'member'
@@ -2762,6 +2782,31 @@ async function setUserRole(userId) {
     await pushData()
     renderUserList()
     showToast('✅ 角色已更新')
+  }
+}
+
+// ==================== 恢复超级管理员身份 ====================
+async function restoreSuperAdmin() {
+  if (!state.currentUser || !isCurrentUserAdmin()) { showToast('只有管理员可用此功能'); return }
+  if (!confirm('⚠️ 确定要恢复超级管理员身份？\n\n此操作需要你的账号是系统的首位创建者。\n\n点击确认继续。')) return
+  // 验证：检查用户列表里是否有更高级别的管理员，且当前用户是管理员
+  // 安全机制：只有当前用户本身没有其他人是 super_admin 时才能恢复
+  const hasOtherSuperAdmin = state.users.some(u => u.id !== state.currentUser.id && u.role === 'super_admin')
+  if (hasOtherSuperAdmin) {
+    alert('系统已有其他超级管理员，请联系超级管理员帮你调整角色。')
+    return
+  }
+  // 当前用户是 admin，且没有其他 super_admin → 恢复身份
+  const idx = state.users.findIndex(u => u.id === state.currentUser.id)
+  if (idx >= 0) {
+    state.users[idx].role = 'super_admin'
+    state.users[idx].permissions = { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true }
+    state.currentUser.role = 'super_admin'
+    state.currentUser.permissions = { brands: [], hidePrice: false, canEdit: true, canAdd: true, canDelete: true }
+    await pushData()
+    renderUserList()
+    renderSecurityUI()
+    showToast('✅ 已恢复超级管理员身份！')
   }
 }
 
