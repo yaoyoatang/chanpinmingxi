@@ -1484,7 +1484,7 @@ async function doTokenLogin() {
   try {
     showLoading('验证Token…')
     const apiUser = await apiFetch('/api/user')
-    if (!apiUser || !apiUser.login) throw new Error('Token无效')
+    if (!apiUser || !apiUser.valid || !apiUser.login) throw new Error('Token无效')
     hideLoading()
 
     // 检查数据仓库
