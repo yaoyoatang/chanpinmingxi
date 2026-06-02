@@ -731,11 +731,26 @@ a{text-decoration:none;color:inherit}
   </div>
 
   <!-- 账号安全 -->
-  <div class="manage-section">
-    <div class="manage-section-title">👤 账号</div>
-    <div class="manage-row">
-      <div><div class="manage-row-label">修改密码</div></div>
-      <button class="btn btn-ghost" style="padding:8px 16px;font-size:13px" onclick="showChangePwdUI()">修改</button>
+  <div class="manage-section" id="accountSecuritySection">
+    <div class="manage-section-title">🔒 账号安全</div>
+    <!-- 当前账号信息 -->
+    <div style="background:var(--primary-light);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:24px">👤</span>
+        <span id="securityUserName" style="font-size:15px;font-weight:600;color:var(--primary)">—</span>
+        <span id="securityUserRole" style="font-size:11px;padding:2px 8px;border-radius:20px;background:#FFF3E0;color:#E65100;font-weight:500"></span>
+      </div>
+      <div style="font-size:12px;color:var(--text-sub)">
+        <span id="securityUserAccount">@—</span>
+        <span style="margin:0 6px;color:#ddd">|</span>
+        <span id="securitySyncStatus">同步状态：检测中…</span>
+      </div>
+    </div>
+
+    <!-- 修改密码 -->
+    <div class="manage-row" onclick="showChangePwdUI()" style="cursor:pointer">
+      <div><div class="manage-row-label">修改密码</div><div class="manage-row-sub">定期更换密码保护账号安全</div></div>
+      <span style="color:var(--text-sub);font-size:18px">›</span>
     </div>
     <div id="changePwdArea" style="display:none;padding:10px 0">
       <div class="pwd-wrap" style="margin-bottom:8px">
@@ -743,6 +758,19 @@ a{text-decoration:none;color:inherit}
         <span class="pwd-eye" onclick="togglePwd('newPwdInput',this)">👁</span>
       </div>
       <button class="btn btn-primary" style="width:100%;padding:10px" onclick="changeMyPassword()">确认修改</button>
+    </div>
+
+    <!-- 安全设置（仅超级管理员可见） -->
+    <div id="securityAdminArea" style="display:none;border-top:1px solid var(--bg);padding-top:10px;margin-top:4px">
+      <div class="manage-row-label" style="margin-bottom:8px;font-size:13px">⚡ 高级安全设置</div>
+      <div class="manage-row">
+        <div><div class="manage-row-label">用户管理入口</div><div class="manage-row-sub">查看和管理所有用户账号</div></div>
+        <button class="btn btn-primary" style="padding:8px 16px;font-size:13px" onclick="goPage('users')">进入</button>
+      </div>
+      <div class="manage-row">
+        <div><div class="manage-row-label">邀请码管理</div><div class="manage-row-sub">生成和管理注册邀请码</div></div>
+        <button class="btn btn-success" style="padding:8px 16px;font-size:13px" onclick="goPage('manage');setTimeout(()=>document.getElementById('inviteSection').scrollIntoView({behavior:'smooth'}),300)">管理</button>
+      </div>
     </div>
   </div>
 
@@ -808,6 +836,8 @@ const state = {
   cloudSync: false,      // 是否开启云端同步
   pendingCount: 0,       // 待同步的本地变更数
   editingUserId: null,   // 正在编辑权限的用户ID
+  _lastAutoPull: 0,      // 上次自动拉取时间戳
+  _autoPollTimer: null,  // 定时轮询定时器
 }
 
 // ==================== 工具函数 ====================
@@ -1129,10 +1159,13 @@ function goPage(name, pushStack = true) {
 
   updateUIForPermissions()
 
-  if (name === 'index') { renderProductList(); updateSyncUI() }
+  if (name === 'index') { renderProductList(); updateSyncUI(); startAutoPoll() }
   if (name === 'add') initAddPage()
   if (name === 'manage') loadManageConfig()
   if (name === 'users') renderUserList()
+  
+  // 离开产品列表页时停止轮询
+  if (name !== 'index') stopAutoPoll()
 }
 
 function goBack() {
@@ -2229,6 +2262,32 @@ function loadManageConfig() {
   // 邀请区：只有管理员可见
   document.getElementById('inviteSection').style.display = isCurrentUserAdmin() ? '' : 'none'
   renderActiveInvite()
+
+  // 账号安全信息填充
+  const user = state.currentUser
+  if (user) {
+    const nameEl = document.getElementById('securityUserName')
+    const roleEl = document.getElementById('securityUserRole')
+    const accountEl = document.getElementById('securityUserAccount')
+    const syncEl = document.getElementById('securitySyncStatus')
+    if (nameEl) nameEl.textContent = user.name || user.username || '—'
+    if (accountEl) accountEl.textContent = '@' + (user.username || '—')
+    if (roleEl) {
+      const roleText = user.role === 'super_admin' ? '超级管理员' : (user.role === 'admin' ? '管理员' : '成员')
+      roleEl.textContent = roleText
+      if (user.role === 'super_admin') { roleEl.style.background = '#FFEBEE'; roleEl.style.color = '#C62828' }
+      else if (user.role === 'admin') { roleEl.style.background = '#FFF3E0'; roleEl.style.color = '#E65100' }
+      else { roleEl.style.background = '#E8F0FB'; roleEl.style.color = '#185FA5' }
+    }
+    if (syncEl) {
+      syncEl.textContent = state.cloudSync ? '☁️ 云端已连接' : '📱 本地模式'
+      syncEl.style.color = state.cloudSync ? 'var(--success)' : 'var(--text-sub)'
+    }
+  }
+
+  // 高级安全设置：仅超级管理员可见
+  const adminArea = document.getElementById('securityAdminArea')
+  if (adminArea) adminArea.style.display = isCurrentUserSuperAdmin() ? '' : 'none'
 }
 
 function toggleMgField(fieldId) {
@@ -2640,14 +2699,42 @@ function showWeeklyReport() {
   win.document.close()
 }
 
+// ==================== 定时自动轮询（解决多用户数据实时同步） ====================
+function startAutoPoll() {
+  stopAutoPoll() // 先清除已有的
+  if (!state.currentUser || !state.cloudSync) return
+  // 每30秒自动从云端拉取一次最新数据
+  state._autoPollTimer = setInterval(async () => {
+    if (!state.currentUser || !state.cloudSync || document.hidden) return
+    try {
+      await pullLatestCloudData()
+    } catch(e) {
+      // 静默失败，不影响用户体验
+    }
+  }, 30000)
+  // 启动时立即拉一次（延迟2秒，等页面渲染完）
+  setTimeout(() => {
+    if (state.currentUser && state.cloudSync && state.currentPage === 'index') {
+      pullLatestCloudData()
+    }
+  }, 2000)
+}
+
+function stopAutoPoll() {
+  if (state._autoPollTimer) {
+    clearInterval(state._autoPollTimer)
+    state._autoPollTimer = null
+  }
+}
+
 // ==================== 初始化 ====================
 autoLogin()
 
-// 页面从后台切回前台时，自动同步最新数据（间隔>30秒才触发，避免频繁请求）
+// 页面从后台切回前台时，立即同步最新数据
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && state.currentUser && state.cloudSync) {
     const now = Date.now()
-    if (!state._lastAutoPull || now - state._lastAutoPull > 30000) {
+    if (!state._lastAutoPull || now - state._lastAutoPull > 15000) { // 切回前台15秒内不重复拉
       state._lastAutoPull = now
       pullLatestCloudData()
     }
