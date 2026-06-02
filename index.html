@@ -1397,8 +1397,8 @@ async function doAccountLogin() {
   }
 
   // 保存登录状态
-  try { localStorage.setItem('pm_last_user', username) } catch(e) {}
-  
+  try { localStorage.setItem('pm_last_user', username); localStorage.setItem('pm_session_user', username) } catch(e) {}
+
   // 记住密码 / 自动登录
   const rememberPwd = document.getElementById('rememberPwd').checked
   const autoLogin = document.getElementById('autoLogin').checked
@@ -1611,6 +1611,7 @@ async function doTokenLogin() {
         state.currentUser = adminUser
         pushData()
         localStorage.setItem('pm_last_user', adminUser.username)
+        localStorage.setItem('pm_session_user', adminUser.username)
 
         btn.textContent = '✅ 设置完成'
         setTimeout(() => {
@@ -1773,6 +1774,7 @@ function useLocalMode() {
       goPage('index', false)
       const token = localStorage.getItem('pm_token')
       if (token) state.token = token
+      localStorage.setItem('pm_session_user', lastUser)
       if (token) {
         showSyncStatus(`📱 ${user.name || user.username}（可点🔄同步）`)
         showToast(`欢迎回来，${user.name || user.username}`)
@@ -1901,7 +1903,32 @@ async function doRegister() {
 
 // ==================== 自动登录 ====================
 async function autoLogin() {
-  // 0. 自动登录：用保存的凭据静默登录
+  // 0. 刷新恢复：如果上次登录过，自动恢复登录态（不需要密码）
+  const sessionUser = localStorage.getItem('pm_session_user')
+  if (sessionUser) {
+    try {
+      const cached = getLocalData()
+      if (cached.users && cached.users.length > 0) {
+        const found = cached.users.find(u => u.username === sessionUser && u.status !== 'disabled')
+        if (found) {
+          applyData(cached)
+          state.currentUser = found
+          state.cloudSync = false
+          const savedToken = localStorage.getItem('pm_token')
+          if (savedToken) state.token = savedToken
+          goPage('index', false)
+          showSyncStatus(state.cloudSync ? `☁️ ${found.name || found.username}` : `📱 ${found.name || found.username}`)
+          updateSyncUI()
+          // 后台尝试拉最新数据
+          if (state.cloudSync && state.token) pullLatestCloudData()
+          return
+        }
+      }
+    } catch(e) {}
+    localStorage.removeItem('pm_session_user')
+  }
+
+  // 1. 自动登录：用保存的凭据静默登录
   const autoLoginFlag = localStorage.getItem('pm_auto_login')
   if (autoLoginFlag === '1') {
     const savedUser = localStorage.getItem('pm_remember_user')
@@ -1933,6 +1960,7 @@ async function autoLogin() {
           // 恢复 token（从 localStorage 或 config 中）
           const savedToken = localStorage.getItem('pm_token')
           if (savedToken) state.token = savedToken
+          localStorage.setItem('pm_session_user', savedUser)
           goPage('index', false)
           showSyncStatus(state.cloudSync ? `☁️ ${foundUser.name || foundUser.username}` : `📱 ${foundUser.name || foundUser.username}`)
           // 自动登录成功后也同步最新数据
@@ -1971,6 +1999,7 @@ function doLogout() {
   if (!confirm('确定要退出登录吗？')) return
   localStorage.removeItem('pm_token')
   localStorage.removeItem('pm_last_user')
+  localStorage.removeItem('pm_session_user')
   localStorage.removeItem('pm_cache')
   localStorage.removeItem('pm_auto_login')
   localStorage.removeItem('pm_remember_pwd')
@@ -2071,7 +2100,7 @@ function getFilteredProducts() {
 function renderProductList() {
   const list = document.getElementById('productList')
   const filtered = getFilteredProducts()
-  const hidePrice = !hasPermission('canViewPrice') || state.config.hidePrice || (state.currentUser && state.currentUser.permissions && state.currentUser.permissions.hidePrice)
+  const hidePrice = isCurrentUserAdmin() ? false : (!hasPermission('canViewPrice') || state.config.hidePrice || (state.currentUser && state.currentUser.permissions && state.currentUser.permissions.hidePrice))
 
   if (!filtered.length) {
     list.innerHTML = `<div class="empty-tip"><div class="empty-icon">📦</div><div class="empty-text">暂无产品</div></div>`
@@ -2110,7 +2139,7 @@ function goDetail(id) {
 }
 
 function renderDetailPage(p) {
-  const hidePrice = !hasPermission('canViewPrice') || state.config.hidePrice || (state.currentUser && state.currentUser.permissions && state.currentUser.permissions.hidePrice)
+  const hidePrice = isCurrentUserAdmin() ? false : (!hasPermission('canViewPrice') || state.config.hidePrice || (state.currentUser && state.currentUser.permissions && state.currentUser.permissions.hidePrice))
 
   const priceGrid = !hidePrice ? `
     <div class="detail-price-grid">
