@@ -1211,6 +1211,18 @@ async function pushData() {
     }
 
     if (latestData) {
+      // 合并云端返回的已删除ID到本地
+      if (latestData._deletedProductIds) {
+        latestData._deletedProductIds.forEach(id => state._deletedProductIds.add(id))
+      }
+      // 检测本地有但云端没有的产品（被他人删除）→ 加入删除集合
+      const cloudPIds = new Set((latestData.products || []).map(p => p.id))
+      localProductsCheck: (Array.isArray(data.products) ? data.products : []).forEach(p => {
+        if (!cloudPIds.has(p.id) && !state._deletedProductIds.has(p.id)) {
+          state._deletedProductIds.add(p.id)
+        }
+      })
+
       // 合并：以id为key去重合并，避免互相覆盖
       // 产品：合并（本地优先），排除已删除的
       const localProducts = Array.isArray(data.products) ? data.products : []
@@ -1473,6 +1485,21 @@ async function pullLatestCloudData() {
     const latest = await readCloudData()
     if (!latest) return
     const local = collectData()
+
+    // 合并云端返回的已删除ID到本地
+    if (latest._deletedProductIds) {
+      latest._deletedProductIds.forEach(id => state._deletedProductIds.add(id))
+    }
+
+    // 检测本地有但云端没有的产品（被他人删除）→ 加入删除集合
+    const cloudProductIds = new Set((latest.products || []).map(p => p.id))
+    ;(local.products || []).forEach(p => {
+      if (!cloudProductIds.has(p.id) && !state._deletedProductIds.has(p.id)) {
+        state._deletedProductIds.add(p.id)
+        console.log('[自动同步] 检测到被他人删除的产品:', p.id, p.name || '')
+      }
+    })
+
     // 产品：合并去重（以id为key），排除已删除的
     const productMap = {}
     ;(latest.products || []).forEach(p => { if (!state._deletedProductIds.has(p.id)) productMap[p.id] = p })
