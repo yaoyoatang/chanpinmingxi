@@ -2259,6 +2259,12 @@ function closeImgViewer() {
   document.getElementById('imgViewer').classList.add('hidden')
 }
 
+// 游客模式图片查看器（直接传图片地址，不依赖 state.currentProduct）
+function openGuestImgViewer(imgSrc) {
+  document.getElementById('imgViewerSrc').src = imgSrc.startsWith('data:') ? imgSrc : imgSrc
+  document.getElementById('imgViewer').classList.remove('hidden')
+}
+
 // ==================== 添加/编辑产品 ====================
 function initAddPage(product) {
   state.editProductId = product ? product.id : null
@@ -3186,7 +3192,7 @@ function renderGuestDetail(p) {
     <div style="background:#fff;padding:14px;margin:-1px -1px 0">
       <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch">
         ${p.images.map((img, i) =>
-          `<img src="${img.startsWith('data:')?img:escAttr(img)}" style="width:160px;height:160px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:pointer" onclick="openImgViewer('_base64_${i}')">`
+          `<img src="${img.startsWith('data:')?img:escAttr(img)}" style="width:160px;height:160px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:pointer" onclick="openGuestImgViewer(${JSON.stringify(img).replace(/"/g, '&quot;')})">`
         ).join('')}
       </div>
     </div>
