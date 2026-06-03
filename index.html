@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="产品明细">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#185FA5">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%23185FA5'/%3E%3Ctext x='256' y='340' font-size='280' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3E明%3C/text%3E%3C/svg%3E">
 <title>产品明细</title>
 <style>
 /* ===== 全局重置 ===== */
@@ -33,6 +40,30 @@ a{text-decoration:none;color:inherit}
 .hidden{display:none!important}
 .page{display:none;min-height:100vh}
 .page.active{display:block}
+
+/* ===== PWA 安装提示横幅 ===== */
+.install-banner{
+  position:fixed;top:62px;left:12px;right:12px;z-index:200;
+  background:linear-gradient(135deg,#185FA5,#0e3d7a);
+  color:#fff;border-radius:14px;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:0 4px 20px rgba(24,95,165,0.35);
+  animation:slideDown .3s ease;
+}
+@keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+.install-banner.hidden{display:none}
+.install-banner-icon{font-size:32px;flex-shrink:0}
+.install-banner-text{flex:1}
+.install-banner-text .title{font-size:14px;font-weight:600;margin-bottom:2px}
+.install-banner-text .desc{font-size:12px;opacity:.8}
+.install-banner-btn{
+  padding:8px 18px;background:#fff;color:#185FA5;border-radius:8px;
+  font-size:13px;font-weight:600;flex-shrink:0;
+}
+.install-banner-dismiss{
+  background:none;border:none;color:#fff;font-size:20px;padding:4px 8px;
+  opacity:.7;cursor:pointer;flex-shrink:0;
+}
 
 /* ===== 加载指示器 ===== */
 .loading-overlay{
@@ -526,6 +557,17 @@ a{text-decoration:none;color:inherit}
 
 <!-- 同步状态 -->
 <div class="sync-status" id="syncStatus">同步中…</div>
+
+<!-- PWA 安装提示横幅 -->
+<div class="install-banner hidden" id="installBanner">
+  <div class="install-banner-icon">📱</div>
+  <div class="install-banner-text">
+    <div class="title">安装到桌面</div>
+    <div class="desc">一键安装，像原生 App 一样使用</div>
+  </div>
+  <button class="install-banner-btn" id="installBtn">安装</button>
+  <button class="install-banner-dismiss" id="installDismiss">✕</button>
+</div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -3068,6 +3110,57 @@ function stopAutoPoll() {
     state._autoPollTimer = null
   }
 }
+
+// ==================== PWA 安装到桌面 ====================
+let deferredPrompt = null
+const installBanner = document.getElementById('installBanner')
+const installBtn = document.getElementById('installBtn')
+const installDismiss = document.getElementById('installDismiss')
+
+// 注册 Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {})
+}
+
+// 监听安装提示事件
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault()
+  deferredPrompt = e
+  // 如果用户之前没关闭过提示，显示横幅
+  if (!localStorage.getItem('pm_install_dismissed')) {
+    setTimeout(() => {
+      installBanner.classList.remove('hidden')
+    }, 3000)  // 登录后3秒再弹，不打扰
+  }
+})
+
+// 用户点击"安装"按钮
+installBtn.addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt()
+    const result = await deferredPrompt.userChoice
+    if (result.outcome === 'accepted') {
+      showToast('✅ 安装成功！')
+    }
+    deferredPrompt = null
+    installBanner.classList.add('hidden')
+  } else {
+    showToast('请在浏览器菜单中选择"添加到主屏幕"')
+  }
+})
+
+// 关闭横幅
+installDismiss.addEventListener('click', () => {
+  installBanner.classList.add('hidden')
+  localStorage.setItem('pm_install_dismissed', '1')
+})
+
+// 检测到已安装（standalone模式），永远不再显示横幅
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null
+  installBanner.classList.add('hidden')
+  localStorage.setItem('pm_install_dismissed', '1')
+})
 
 // ==================== 初始化 ====================
 restoreDeletedIds()  // 恢复已删除产品ID追踪
