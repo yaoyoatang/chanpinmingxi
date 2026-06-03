@@ -160,8 +160,8 @@ export async function onRequest(context) {
       const cloud = auth.data
 
       // 产品：以id为key合并，客户端优先
-      // 先收集客户端已删除的产品ID（来自 _deletedProductIds 或不在客户端列表中的云端产品）
-      const deletedProductIds = new Set(sd._deletedProductIds || [])
+      // 合并云端和客户端的已删除产品ID
+      const deletedProductIds = new Set([...(cloud._deletedProductIds || []), ...(sd._deletedProductIds || [])])
 
       // 云端有但客户端没有的产品 = 客户端已删除 → 加入删除集合
       const clientProductIds = new Set((sd.products || []).map(p => p.id))
@@ -199,6 +199,7 @@ export async function onRequest(context) {
         users: mergedUsers,
         invites: mergedInvites,
         config: mergedConfig,
+        _deletedProductIds: [...deletedProductIds],
         _version: (cloud._version || 0) + 1,
         _updatedAt: new Date().toISOString()
       }
