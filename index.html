@@ -1930,14 +1930,14 @@ async function autoLogin() {
         if (found) {
           applyData(cached)
           state.currentUser = found
-          state.cloudSync = false
           const savedToken = localStorage.getItem('pm_token')
-          if (savedToken) state.token = savedToken
+          if (savedToken) { state.token = savedToken; state.cloudSync = true }
+          else { state.cloudSync = false }
           goPage('index', false)
           showSyncStatus(state.cloudSync ? `☁️ ${found.name || found.username}` : `📱 ${found.name || found.username}`)
           updateSyncUI()
-          // 后台尝试拉最新数据
-          if (state.cloudSync && state.token) pullLatestCloudData()
+          // 后台立即拉最新数据
+          if (state.token) pullLatestCloudData()
           return
         }
       }
