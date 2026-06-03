@@ -609,7 +609,7 @@ a{text-decoration:none;color:inherit}
 </div>
 
 <!-- ==================== 登录页 ==================== -->
-<div id="login-page" class="page active">
+<div id="login-page" class="page" style="display:none">
   <div style="font-size:64px;margin-bottom:12px;text-align:center">🛍️</div>
   <div class="login-title" style="text-align:center;color:#fff">产品明细</div>
   <div class="login-sub" style="text-align:center;color:rgba(255,255,255,.6)">多用户协作 · 云端同步 · 权限管理</div>
@@ -687,10 +687,13 @@ a{text-decoration:none;color:inherit}
 </div>
 
 <!-- ==================== 访客浏览页（无需登录） ==================== -->
-<div id="guest-page" class="page">
+<div id="guest-page" class="page active">
   <nav class="navbar" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)">
     <span class="navbar-title">🛒 产品目录</span>
-    <span class="navbar-action" onclick="showGuestLoginTip()">登录</span>
+    <div style="display:flex;gap:8px">
+      <span class="navbar-action" id="guestInstallBtn" onclick="showGuestInstallTip()" style="cursor:pointer" title="安装到桌面">📲 安装</span>
+      <span class="navbar-action" onclick="showGuestLoginTip()" style="cursor:pointer">登录</span>
+    </div>
   </nav>
   <!-- 搜索栏（与主站同款） -->
   <div class="search-bar-wrap">
@@ -941,7 +944,7 @@ a{text-decoration:none;color:inherit}
 </div><!-- end app-container -->
 
 <script>
-// ==================== 同步预检：防止刷新时闪烁登录页 ====================
+// ==================== 同步预检：防止刷新时闪烁（已登录用户直接显示首页） ====================
 (function() {
   try {
     const su = localStorage.getItem('pm_session_user')
@@ -950,8 +953,8 @@ a{text-decoration:none;color:inherit}
       const d = JSON.parse(raw)
       const u = (d.users || []).find(function(x) { return x.username === su && x.status !== 'disabled' })
       if (u) {
-        // 立即隐藏登录页、显示首页（在浏览器首次绘制前完成，不闪烁）
-        document.getElementById('login-page').classList.remove('active')
+        // 已登录用户：立即隐藏游客页、显示首页（在浏览器首次绘制前完成，不闪烁）
+        document.getElementById('guest-page').classList.remove('active')
         document.getElementById('index-page').classList.add('active')
       }
     }
@@ -2996,12 +2999,20 @@ window.addEventListener('appinstalled', () => {
 // ==================== 初始化 ====================
 restoreDeletedIds()  // 恢复已删除产品ID追踪
 
-// 检测是否为访客模式（URL带 #guest 或 #guest/产品ID）
+// 默认进入游客模式（无需登录即可浏览搜索产品）
+// URL带 #guest 或 #guest/产品ID 时直接进入对应游客页面
+// 其他情况：先尝试自动登录，无登录态则进入游客模式
 const hash = location.hash.replace('#', '')
 if (hash.startsWith('guest')) {
   initGuestMode(hash)
 } else {
   autoLogin()
+  // 延迟检查：如果 autoLogin 没有恢复登录态，切换为游客模式
+  setTimeout(() => {
+    if (!state.currentUser) {
+      initGuestMode('guest')
+    }
+  }, 100)
 }
 
 // ==================== 访客浏览模式（无需登录） ====================
@@ -3229,8 +3240,29 @@ function renderGuestEmpty(msg) {
 
 function showGuestLoginTip() {
   if (confirm('切换到登录页面？\n\n登录后可管理产品和查看详细数据。')) {
-    location.hash = ''
-    location.reload()
+    // 直接显示登录页，不需要刷新
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+    const loginPage = document.getElementById('login-page')
+    loginPage.style.display = ''
+    loginPage.classList.add('active')
+    state.currentPage = 'login'
+    document.getElementById('tabbar').style.display = 'none'
+    // 隐藏安装横幅
+    installBanner.classList.add('hidden')
+  }
+}
+
+function showGuestInstallTip() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt()
+    deferredPrompt.userChoice.then(result => {
+      if (result.outcome === 'accepted') {
+        showToast('✅ 安装成功！')
+      }
+      deferredPrompt = null
+    })
+  } else {
+    showToast('请打开浏览器菜单 → 选择"添加到主屏幕"或"安装应用"')
   }
 }
 
